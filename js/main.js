@@ -560,6 +560,152 @@
     return div.innerHTML;
   }
 
+  // ---- Products.md Data-Driven Rendering ----
+
+  function parseProductsMd(text) {
+    var categories = {};
+    var currentCategory = null;
+    var currentProduct = null;
+    var lines = text.split('\n');
+
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+
+      // Category header — line ending with ":"
+      var catMatch = line.match(/^([A-Za-z][A-Za-z &]+):$/);
+      if (catMatch) {
+        currentCategory = catMatch[1].trim();
+        categories[currentCategory] = [];
+        currentProduct = null;
+        continue;
+      }
+
+      if (!currentCategory) continue;
+
+      // New product line — starts with a number and dot
+      var numMatch = line.match(/^\d+\.\s*Name:\s*(.+)/);
+      if (numMatch) {
+        currentProduct = { name: numMatch[1].trim(), description: '', price: '', images: [] };
+        categories[currentCategory].push(currentProduct);
+        continue;
+      }
+
+      if (!currentProduct) continue;
+
+      var descMatch = line.match(/^Description:\s*(.+)/);
+      if (descMatch) { currentProduct.description = descMatch[1].trim(); continue; }
+
+      var priceMatch = line.match(/^Price:\s*(.+)/);
+      if (priceMatch) { currentProduct.price = priceMatch[1].trim(); continue; }
+
+      var imgMatch = line.match(/^Images:\s*(.+)/);
+      if (imgMatch) {
+        currentProduct.images = imgMatch[1].split(',').map(function (s) { return s.trim(); });
+        continue;
+      }
+    }
+    return categories;
+  }
+
+  function slugify(name, index) {
+    return 'cb-' + name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + (index + 1);
+  }
+
+  function priceToCents(priceStr) {
+    // Take the first dollar amount for data-product-price (used by cart)
+    var m = priceStr.match(/\$?([\d,]+)/);
+    return m ? parseInt(m[1].replace(',', ''), 10) * 100 : 0;
+  }
+
+  function buildProductCardHTML(product, id) {
+    var safe = escapeHtml;
+    var imgs = product.images;
+    var hasCarousel = imgs.length > 1;
+    var imageClass = 'product-card__image' + (hasCarousel ? ' product-carousel' : '');
+
+    var imagesHtml = '';
+    for (var i = 0; i < imgs.length; i++) {
+      var activeClass = i === 0 ? ' product-carousel__slide--active' : '';
+      var cssClass = hasCarousel ? 'product-carousel__slide' + activeClass : '';
+      imagesHtml += '<img class="' + cssClass + '" src="images/products/' + safe(imgs[i]) +
+        '.jpg" alt="' + safe(product.name) + ' - view ' + (i + 1) + '" loading="lazy">';
+    }
+    if (hasCarousel) {
+      imagesHtml += '<button type="button" class="product-carousel__prev" aria-label="Previous photo">&lsaquo;</button>';
+      imagesHtml += '<button type="button" class="product-carousel__next" aria-label="Next photo">&rsaquo;</button>';
+    }
+
+    return '<article class="product-card" data-product-id="' + safe(id) +
+      '" data-product-name="' + safe(product.name) +
+      '" data-product-price="' + priceToCents(product.price) + '">' +
+      '<div class="' + imageClass + '">' + imagesHtml + '</div>' +
+      '<div class="product-card__info">' +
+      '<h3 class="product-card__name">' + safe(product.name) + '</h3>' +
+      '<p class="product-card__description">' + safe(product.description) + '</p>' +
+      '<span class="product-card__price">' + safe(product.price) + '</span>' +
+      '<div class="product-card__actions">' +
+      '<label for="qty-' + safe(id) + '" class="sr-only">Quantity</label>' +
+      '<input type="number" id="qty-' + safe(id) + '" class="product-card__qty" value="1" min="1" step="1" aria-label="Quantity for ' + safe(product.name) + '">' +
+      '<button class="btn btn--accent product-card__add" type="button" aria-label="Add ' + safe(product.name) + ' to cart">Add to Cart</button>' +
+      '</div></div></article>';
+  }
+
+  // Map from Products.md category names → grid element IDs
+  var CATEGORY_GRIDS = {
+    'Basic Boards': 'basic-boards-grid'
+  };
+
+  function loadProductsFromMd() {
+    var hasGrids = false;
+    var keys = Object.keys(CATEGORY_GRIDS);
+    for (var k = 0; k < keys.length; k++) {
+      if (document.getElementById(CATEGORY_GRIDS[keys[k]])) { hasGrids = true; break; }
+    }
+    if (!hasGrids) return;
+
+    fetch('Products.md')
+      .then(function (res) { return res.text(); })
+      .then(function (text) {
+        var categories = parseProductsMd(text);
+        var catNames = Object.keys(CATEGORY_GRIDS);
+        for (var c = 0; c < catNames.length; c++) {
+          var catName = catNames[c];
+          var grid = document.getElementById(CATEGORY_GRIDS[catName]);
+          if (!grid || !categories[catName]) continue;
+          var products = categories[catName];
+          var html = '';
+          for (var p = 0; p < products.length; p++) {
+            var id = slugify(catName, p);
+            html += buildProductCardHTML(products[p], id);
+          }
+          grid.innerHTML = html;
+        }
+      })
+      .catch(function (err) {
+        console.error('Failed to load Products.md:', err);
+      });
+  }
+
+  // ---- Product Image Carousel ----
+
+  function initProductCarousels() {
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.product-carousel__prev, .product-carousel__next');
+      if (!btn) return;
+      var carousel = btn.closest('.product-carousel');
+      var slides = carousel.querySelectorAll('.product-carousel__slide');
+      if (slides.length < 2) return;
+      var dir = btn.classList.contains('product-carousel__next') ? 1 : -1;
+      var currentIdx = 0;
+      slides.forEach(function (s, i) {
+        if (s.classList.contains('product-carousel__slide--active')) currentIdx = i;
+      });
+      slides[currentIdx].classList.remove('product-carousel__slide--active');
+      var next = (currentIdx + dir + slides.length) % slides.length;
+      slides[next].classList.add('product-carousel__slide--active');
+    });
+  }
+
   // ---- Hero Slideshow ----
 
   function initHeroSlideshow() {
@@ -650,6 +796,12 @@
 
     // Hero slideshow
     initHeroSlideshow();
+
+    // Product image carousels
+    initProductCarousels();
+
+    // Load products from Products.md
+    loadProductsFromMd();
   });
 
 })();

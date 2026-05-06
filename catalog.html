@@ -49,76 +49,8 @@
         <!-- ---- Basic Boards (T018) ---- -->
         <section class="category-section">
           <h3>Basic Boards</h3>
-          <div class="product-grid">
-            <!-- ADD NEW BASIC BOARDS BELOW -->
-            <article class="product-card"
-                     data-product-id="cb-basic-001"
-                     data-product-name="Maple End-Grain Board"
-                     data-product-price="4500">
-              <div class="product-card__image">
-                <img src="images/products/cb-basic-001.svg"
-                     alt="Maple end-grain cutting board with natural wood tones"
-                     loading="lazy" width="400" height="300">
-              </div>
-              <div class="product-card__info">
-                <h3 class="product-card__name">Maple End-Grain Board</h3>
-                <p class="product-card__description">Classic maple end-grain board, perfect for everyday use. Gentle on knives and built to last.</p>
-                <span class="product-card__price">$45.00</span>
-                <div class="product-card__actions">
-                  <label for="qty-cb-basic-001" class="sr-only">Quantity</label>
-                  <input type="number" id="qty-cb-basic-001" class="product-card__qty"
-                         value="1" min="1" step="1" aria-label="Quantity for Maple End-Grain Board">
-                  <button class="btn btn--accent product-card__add" type="button"
-                          aria-label="Add Maple End-Grain Board to cart">Add to Cart</button>
-                </div>
-              </div>
-            </article>
-
-            <article class="product-card"
-                     data-product-id="cb-basic-002"
-                     data-product-name="Walnut Edge-Grain Board"
-                     data-product-price="3800">
-              <div class="product-card__image">
-                <img src="images/products/cb-basic-002.svg"
-                     alt="Walnut edge-grain cutting board with rich dark tones"
-                     loading="lazy" width="400" height="300">
-              </div>
-              <div class="product-card__info">
-                <h3 class="product-card__name">Walnut Edge-Grain Board</h3>
-                <p class="product-card__description">Rich walnut edge-grain board with stunning natural color variation. A kitchen essential.</p>
-                <span class="product-card__price">$38.00</span>
-                <div class="product-card__actions">
-                  <label for="qty-cb-basic-002" class="sr-only">Quantity</label>
-                  <input type="number" id="qty-cb-basic-002" class="product-card__qty"
-                         value="1" min="1" step="1" aria-label="Quantity for Walnut Edge-Grain Board">
-                  <button class="btn btn--accent product-card__add" type="button"
-                          aria-label="Add Walnut Edge-Grain Board to cart">Add to Cart</button>
-                </div>
-              </div>
-            </article>
-            <!--
-              TEMPLATE: Copy this block to add a new Basic Board product.
-              Update: data-product-id, data-product-name, data-product-price,
-              img src/alt, h3 name, p description, span price, input id/aria-label, button aria-label
-              <article class="product-card"
-                       data-product-id="cb-basic-XXX"
-                       data-product-name="PRODUCT NAME"
-                       data-product-price="PRICE_IN_CENTS">
-                <div class="product-card__image">
-                  <img src="images/products/FILENAME.svg" alt="DESCRIPTION" loading="lazy" width="400" height="300">
-                </div>
-                <div class="product-card__info">
-                  <h3 class="product-card__name">PRODUCT NAME</h3>
-                  <p class="product-card__description">DESCRIPTION</p>
-                  <span class="product-card__price">$XX.XX</span>
-                  <div class="product-card__actions">
-                    <label for="qty-cb-basic-XXX" class="sr-only">Quantity</label>
-                    <input type="number" id="qty-cb-basic-XXX" class="product-card__qty" value="1" min="1" step="1" aria-label="Quantity for PRODUCT NAME">
-                    <button class="btn btn--accent product-card__add" type="button" aria-label="Add PRODUCT NAME to cart">Add to Cart</button>
-                  </div>
-                </div>
-              </article>
-            -->
+          <div class="product-grid" id="basic-boards-grid">
+            <!-- Populated dynamically from Products.md -->
           </div>
         </section>
 
