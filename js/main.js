@@ -289,7 +289,7 @@
           clearCart();
           updateCartBadge();
           renderCartPanel();
-          showToast('Quote request sent! We\'ll be in touch.');
+          showToast('Quote request sent! I\'ll be in touch.');
           setTimeout(closeCartPanel, 1500);
         } else {
           showToast('Something went wrong. Please try again.');
@@ -560,6 +560,19 @@
     return div.innerHTML;
   }
 
+  // ---- Hero Slideshow ----
+
+  function initHeroSlideshow() {
+    var slides = document.querySelectorAll('.hero__slide');
+    if (slides.length < 2) return;
+    var current = 0;
+    setInterval(function () {
+      slides[current].classList.remove('hero__slide--active');
+      current = (current + 1) % slides.length;
+      slides[current].classList.add('hero__slide--active');
+    }, 5000);
+  }
+
   // ---- Page Initialization (T016) ----
 
   document.addEventListener('DOMContentLoaded', function () {
@@ -634,6 +647,9 @@
 
     // Hide past events
     hidePastEvents();
+
+    // Hero slideshow
+    initHeroSlideshow();
   });
 
 })();
