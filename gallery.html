@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project Gallery | Mitch's Hardwoods</title>
+  <meta name="description" content="Browse photos of handcrafted cutting boards, Adirondack chairs, and custom woodworking projects from Mitch's Hardwoods.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Skip to content</a>
+
+  <header class="site-header">
+    <div class="container">
+      <a href="index.html" class="site-header__brand">Mitch's Hardwoods</a>
+      <div class="site-header__right">
+        <input type="checkbox" id="nav-toggle" class="nav-toggle">
+        <label for="nav-toggle" class="nav-toggle-label" aria-label="Toggle navigation" aria-expanded="false">
+          <span class="hamburger"></span>
+        </label>
+        <nav class="nav-links" aria-label="Main navigation">
+          <a href="index.html" class="nav-link">Home</a>
+          <a href="catalog.html" class="nav-link">Catalog</a>
+          <a href="gallery.html" class="nav-link nav-link--active">Gallery</a>
+          <a href="events.html" class="nav-link">Events</a>
+        </nav>
+        <button type="button" id="cart-toggle" class="cart-toggle" aria-label="Open shopping cart">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm10 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM7.16 14.26l.04-.12.96-1.74h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49A1 1 0 0020.07 4H5.21l-.94-2H1v2h2l3.6 7.59-1.35 2.44C4.52 15.37 5.48 17 7 17h12v-2H7.42a.25.25 0 01-.26-.24z"/></svg>
+          <span id="cart-count" class="cart-badge" hidden>0</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main-content">
+    <div class="container">
+      <div class="page-header">
+        <h1>Project Gallery</h1>
+        <p>A look at some of our recent handcrafted pieces</p>
+      </div>
+
+      <section class="gallery">
+        <!-- ADD NEW GALLERY PHOTOS BELOW -->
+        <figure class="gallery__item">
+          <img src="images/gallery/project-1.svg"
+               alt="End-grain walnut and maple cutting board with river pattern"
+               loading="lazy" width="600" height="400">
+          <figcaption>Walnut & Maple River Board</figcaption>
+        </figure>
+
+        <figure class="gallery__item">
+          <img src="images/gallery/project-2.svg"
+               alt="Set of three cherry wood serving boards"
+               loading="lazy" width="600" height="400">
+          <figcaption>Cherry Serving Board Set</figcaption>
+        </figure>
+
+        <figure class="gallery__item">
+          <img src="images/gallery/project-3.svg"
+               alt="Cedar Adirondack chair on a front porch"
+               loading="lazy" width="600" height="400">
+          <figcaption>Cedar Adirondack on the Porch</figcaption>
+        </figure>
+
+        <figure class="gallery__item">
+          <img src="images/gallery/project-4.svg"
+               alt="Custom engraved cutting board as a wedding gift"
+               loading="lazy" width="600" height="400">
+          <figcaption>Custom Wedding Gift Board</figcaption>
+        </figure>
+
+        <figure class="gallery__item">
+          <img src="images/gallery/project-5.svg"
+               alt="Pair of Adirondack rocking chairs in white oak"
+               loading="lazy" width="600" height="400">
+          <figcaption>White Oak Rocker Pair</figcaption>
+        </figure>
+
+        <figure class="gallery__item">
+          <img src="images/gallery/project-6.svg"
+               alt="Padauk and purple heart exotic wood cutting board"
+               loading="lazy" width="600" height="400">
+          <figcaption>Exotic Wood Board</figcaption>
+        </figure>
+        <!--
+          TEMPLATE: Copy this block to add a new gallery photo.
+          1. Place your optimized image in images/gallery/
+          2. Update the src, alt, width, height, and figcaption below
+          <figure class="gallery__item">
+            <img src="images/gallery/YOUR-IMAGE.svg"
+                 alt="DESCRIBE THE PROJECT"
+                 loading="lazy" width="600" height="400">
+            <figcaption>CAPTION TEXT</figcaption>
+          </figure>
+        -->
+      </section>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer__content">
+        <div class="footer__brand">
+          <p class="footer__name">Mitch's Hardwoods</p>
+          <p class="footer__tagline">Handcrafted in Woodstock, GA</p>
+        </div>
+        <div class="footer__contact">
+          <p><a href="tel:+1XXXXXXXXXX">(XXX) XXX-XXXX</a></p>
+          <p><a href="mailto:email@example.com">email@example.com</a></p>
+          <p>Woodstock, GA</p>
+        </div>
+      </div>
+      <div class="footer__copyright">
+        <p>&copy; 2026 Mitch's Hardwoods. All rights reserved.</p>
+      </div>
+    </div>
+  </footer>
+
+  <div id="cart-overlay" class="cart-overlay"></div>
+  <aside id="cart-panel" class="cart-panel" aria-label="Shopping cart" aria-hidden="true">
+    <div class="cart-panel__header">
+      <h2 class="cart-panel__title">Your Cart</h2>
+      <button type="button" class="cart-panel__close" aria-label="Close cart">&times;</button>
+    </div>
+    <div class="cart-panel__body">
+      <p class="cart-panel__empty">Your cart is empty.</p>
+    </div>
+    <div class="cart-panel__footer" style="display:none">
+      <div class="cart-panel__total">
+        <span>Total:</span>
+        <span class="cart-panel__total-amount">$0.00</span>
+      </div>
+      <button type="button" class="btn btn--primary cart-panel__quote-btn">Request Quote</button>
+    </div>
+  </aside>
+
+  <script src="js/main.js"></script>
+</body>
+</html>

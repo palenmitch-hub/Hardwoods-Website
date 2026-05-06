@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Product Catalog | Mitch's Hardwoods</title>
+  <meta name="description" content="Browse handcrafted cutting boards and Adirondack chairs from Mitch's Hardwoods in Woodstock, GA. Custom board orders available.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Skip to content</a>
+
+  <header class="site-header">
+    <div class="container">
+      <a href="index.html" class="site-header__brand">Mitch's Hardwoods</a>
+      <div class="site-header__right">
+        <input type="checkbox" id="nav-toggle" class="nav-toggle">
+        <label for="nav-toggle" class="nav-toggle-label" aria-label="Toggle navigation" aria-expanded="false">
+          <span class="hamburger"></span>
+        </label>
+        <nav class="nav-links" aria-label="Main navigation">
+          <a href="index.html" class="nav-link">Home</a>
+          <a href="catalog.html" class="nav-link nav-link--active">Catalog</a>
+          <a href="gallery.html" class="nav-link">Gallery</a>
+          <a href="events.html" class="nav-link">Events</a>
+        </nav>
+        <button type="button" id="cart-toggle" class="cart-toggle" aria-label="Open shopping cart">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm10 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM7.16 14.26l.04-.12.96-1.74h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49A1 1 0 0020.07 4H5.21l-.94-2H1v2h2l3.6 7.59-1.35 2.44C4.52 15.37 5.48 17 7 17h12v-2H7.42a.25.25 0 01-.26-.24z"/></svg>
+          <span id="cart-count" class="cart-badge" hidden>0</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main-content">
+    <div class="container">
+      <div class="page-header">
+        <h1>Product Catalog</h1>
+        <p>Handcrafted with care in Woodstock, GA</p>
+      </div>
+
+      <!-- ==================== CUTTING BOARDS ==================== -->
+      <section class="catalog-section">
+        <h2>Cutting Boards</h2>
+
+        <!-- ---- Basic Boards (T018) ---- -->
+        <section class="category-section">
+          <h3>Basic Boards</h3>
+          <div class="product-grid">
+            <!-- ADD NEW BASIC BOARDS BELOW -->
+            <article class="product-card"
+                     data-product-id="cb-basic-001"
+                     data-product-name="Maple End-Grain Board"
+                     data-product-price="4500">
+              <div class="product-card__image">
+                <img src="images/products/cb-basic-001.svg"
+                     alt="Maple end-grain cutting board with natural wood tones"
+                     loading="lazy" width="400" height="300">
+              </div>
+              <div class="product-card__info">
+                <h3 class="product-card__name">Maple End-Grain Board</h3>
+                <p class="product-card__description">Classic maple end-grain board, perfect for everyday use. Gentle on knives and built to last.</p>
+                <span class="product-card__price">$45.00</span>
+                <div class="product-card__actions">
+                  <label for="qty-cb-basic-001" class="sr-only">Quantity</label>
+                  <input type="number" id="qty-cb-basic-001" class="product-card__qty"
+                         value="1" min="1" step="1" aria-label="Quantity for Maple End-Grain Board">
+                  <button class="btn btn--accent product-card__add" type="button"
+                          aria-label="Add Maple End-Grain Board to cart">Add to Cart</button>
+                </div>
+              </div>
+            </article>
+
+            <article class="product-card"
+                     data-product-id="cb-basic-002"
+                     data-product-name="Walnut Edge-Grain Board"
+                     data-product-price="3800">
+              <div class="product-card__image">
+                <img src="images/products/cb-basic-002.svg"
+                     alt="Walnut edge-grain cutting board with rich dark tones"
+                     loading="lazy" width="400" height="300">
+              </div>
+              <div class="product-card__info">
+                <h3 class="product-card__name">Walnut Edge-Grain Board</h3>
+                <p class="product-card__description">Rich walnut edge-grain board with stunning natural color variation. A kitchen essential.</p>
+                <span class="product-card__price">$38.00</span>
+                <div class="product-card__actions">
+                  <label for="qty-cb-basic-002" class="sr-only">Quantity</label>
+                  <input type="number" id="qty-cb-basic-002" class="product-card__qty"
+                         value="1" min="1" step="1" aria-label="Quantity for Walnut Edge-Grain Board">
+                  <button class="btn btn--accent product-card__add" type="button"
+                          aria-label="Add Walnut Edge-Grain Board to cart">Add to Cart</button>
+                </div>
+              </div>
+            </article>
+            <!--
+              TEMPLATE: Copy this block to add a new Basic Board product.
+              Update: data-product-id, data-product-name, data-product-price,
+              img src/alt, h3 name, p description, span price, input id/aria-label, button aria-label
+              <article class="product-card"
+                       data-product-id="cb-basic-XXX"
+                       data-product-name="PRODUCT NAME"
+                       data-product-price="PRICE_IN_CENTS">
+                <div class="product-card__image">
+                  <img src="images/products/FILENAME.svg" alt="DESCRIPTION" loading="lazy" width="400" height="300">
+                </div>
+                <div class="product-card__info">
+                  <h3 class="product-card__name">PRODUCT NAME</h3>
+                  <p class="product-card__description">DESCRIPTION</p>
+                  <span class="product-card__price">$XX.XX</span>
+                  <div class="product-card__actions">
+                    <label for="qty-cb-basic-XXX" class="sr-only">Quantity</label>
+                    <input type="number" id="qty-cb-basic-XXX" class="product-card__qty" value="1" min="1" step="1" aria-label="Quantity for PRODUCT NAME">
+                    <button class="btn btn--accent product-card__add" type="button" aria-label="Add PRODUCT NAME to cart">Add to Cart</button>
+                  </div>
+                </div>
+              </article>
+            -->
+          </div>
+        </section>
+
+        <!-- ---- Pattern Boards (T019) ---- -->
+        <section class="category-section">
+          <h3>Pattern Boards</h3>
+          <div class="product-grid">
+            <!-- ADD NEW PATTERN BOARDS BELOW -->
+            <article class="product-card"
+                     data-product-id="cb-pattern-001"
+                     data-product-name="Chevron Maple & Walnut Board"
+                     data-product-price="7500">
+              <div class="product-card__image">
+                <img src="images/products/cb-pattern-001.svg"
+                     alt="Chevron pattern cutting board in maple and walnut"
+                     loading="lazy" width="400" height="300">
+              </div>
+              <div class="product-card__info">
+                <h3 class="product-card__name">Chevron Maple & Walnut Board</h3>
+                <p class="product-card__description">Eye-catching chevron pattern combining light maple and dark walnut for a striking contrast.</p>
+                <span class="product-card__price">$75.00</span>
+                <div class="product-card__actions">
+                  <label for="qty-cb-pattern-001" class="sr-only">Quantity</label>
+                  <input type="number" id="qty-cb-pattern-001" class="product-card__qty"
+                         value="1" min="1" step="1" aria-label="Quantity for Chevron Maple & Walnut Board">
+                  <button class="btn btn--accent product-card__add" type="button"
+                          aria-label="Add Chevron Maple & Walnut Board to cart">Add to Cart</button>
+                </div>
+              </div>
+            </article>
+
+            <article class="product-card"
+                     data-product-id="cb-pattern-002"
+                     data-product-name="Herringbone Cherry Board"
+                     data-product-price="8500">
+              <div class="product-card__image">
+                <img src="images/products/cb-pattern-002.svg"
+                     alt="Herringbone pattern cutting board in cherry wood"
+                     loading="lazy" width="400" height="300">
+              </div>
+              <div class="product-card__info">
+                <h3 class="product-card__name">Herringbone Cherry Board</h3>
+                <p class="product-card__description">Elegant herringbone pattern crafted from select cherry wood. A beautiful centerpiece for any kitchen.</p>
+                <span class="product-card__price">$85.00</span>
+                <div class="product-card__actions">
+                  <label for="qty-cb-pattern-002" class="sr-only">Quantity</label>
+                  <input type="number" id="qty-cb-pattern-002" class="product-card__qty"
+                         value="1" min="1" step="1" aria-label="Quantity for Herringbone Cherry Board">
+                  <button class="btn btn--accent product-card__add" type="button"
+                          aria-label="Add Herringbone Cherry Board to cart">Add to Cart</button>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <!-- ---- Intricate Boards (T020) ---- -->
+        <section class="category-section">
+          <h3>Intricate Boards</h3>
+          <div class="product-grid">
+            <!-- ADD NEW INTRICATE BOARDS BELOW -->
+            <article class="product-card"
+                     data-product-id="cb-intricate-001"
+                     data-product-name="3D Tumbling Block Board"
+                     data-product-price="12500">
+              <div class="product-card__image">
+                <img src="images/products/cb-intricate-001.svg"
+                     alt="3D tumbling block pattern cutting board with maple, walnut, and cherry"
+                     loading="lazy" width="400" height="300">
+              </div>
+              <div class="product-card__info">
+                <h3 class="product-card__name">3D Tumbling Block Board</h3>
+                <p class="product-card__description">Stunning 3D optical illusion created with maple, walnut, and cherry. A true showpiece.</p>
+                <span class="product-card__price">$125.00</span>
+                <div class="product-card__actions">
+                  <label for="qty-cb-intricate-001" class="sr-only">Quantity</label>
+                  <input type="number" id="qty-cb-intricate-001" class="product-card__qty"
+                         value="1" min="1" step="1" aria-label="Quantity for 3D Tumbling Block Board">
+                  <button class="btn btn--accent product-card__add" type="button"
+                          aria-label="Add 3D Tumbling Block Board to cart">Add to Cart</button>
+                </div>
+              </div>
+            </article>
+
+            <article class="product-card"
+                     data-product-id="cb-intricate-002"
+                     data-product-name="Celtic Knot Board"
+                     data-product-price="15000">
+              <div class="product-card__image">
+                <img src="images/products/cb-intricate-002.svg"
+                     alt="Celtic knot design cutting board with padauk and maple inlay"
+                     loading="lazy" width="400" height="300">
+              </div>
+              <div class="product-card__info">
+                <h3 class="product-card__name">Celtic Knot Board</h3>
+                <p class="product-card__description">Intricate Celtic knot design with padauk and maple inlay. Each board is a unique work of art.</p>
+                <span class="product-card__price">$150.00</span>
+                <div class="product-card__actions">
+                  <label for="qty-cb-intricate-002" class="sr-only">Quantity</label>
+                  <input type="number" id="qty-cb-intricate-002" class="product-card__qty"
+                         value="1" min="1" step="1" aria-label="Quantity for Celtic Knot Board">
+                  <button class="btn btn--accent product-card__add" type="button"
+                          aria-label="Add Celtic Knot Board to cart">Add to Cart</button>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <!-- ---- Custom Boards (T021) ---- -->
+        <section class="category-section">
+          <h3>Custom Boards</h3>
+          <div class="product-grid">
+            <!-- ADD NEW CUSTOM BOARDS BELOW -->
+            <article class="product-card"
+                     data-product-id="cb-custom-001"
+                     data-product-name="Custom Engraved Maple Board"
+                     data-product-price="9500">
+              <div class="product-card__image">
+                <img src="images/products/cb-custom-001.svg"
+                     alt="Custom engraved maple cutting board with personalized text"
+                     loading="lazy" width="400" height="300">
+              </div>
+              <div class="product-card__info">
+                <h3 class="product-card__name">Custom Engraved Maple Board</h3>
+                <p class="product-card__description">Personalized maple board with custom engraving. Perfect for gifts, weddings, and special occasions.</p>
+                <span class="product-card__price">$95.00</span>
+                <div class="product-card__actions">
+                  <label for="qty-cb-custom-001" class="sr-only">Quantity</label>
+                  <input type="number" id="qty-cb-custom-001" class="product-card__qty"
+                         value="1" min="1" step="1" aria-label="Quantity for Custom Engraved Maple Board">
+                  <button class="btn btn--accent product-card__add" type="button"
+                          aria-label="Add Custom Engraved Maple Board to cart">Add to Cart</button>
+                </div>
+              </div>
+            </article>
+
+            <article class="product-card"
+                     data-product-id="cb-custom-002"
+                     data-product-name="Mixed Exotic Wood Board"
+                     data-product-price="11000">
+              <div class="product-card__image">
+                <img src="images/products/cb-custom-002.svg"
+                     alt="Custom cutting board with mixed exotic woods including padauk and purple heart"
+                     loading="lazy" width="400" height="300">
+              </div>
+              <div class="product-card__info">
+                <h3 class="product-card__name">Mixed Exotic Wood Board</h3>
+                <p class="product-card__description">A blend of exotic woods including padauk and purple heart. Bold colors and exceptional durability.</p>
+                <span class="product-card__price">$110.00</span>
+                <div class="product-card__actions">
+                  <label for="qty-cb-custom-002" class="sr-only">Quantity</label>
+                  <input type="number" id="qty-cb-custom-002" class="product-card__qty"
+                         value="1" min="1" step="1" aria-label="Quantity for Mixed Exotic Wood Board">
+                  <button class="btn btn--accent product-card__add" type="button"
+                          aria-label="Add Mixed Exotic Wood Board to cart">Add to Cart</button>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
+      </section>
+
+      <!-- ==================== ADIRONDACK CHAIRS ==================== -->
+      <section class="catalog-section">
+        <h2>Adirondack Chairs</h2>
+
+        <!-- ---- Low Rider (T022) ---- -->
+        <section class="category-section">
+          <h3>Low Rider</h3>
+          <div class="product-grid">
+            <!-- ADD NEW LOW RIDER CHAIRS BELOW -->
+            <article class="product-card"
+                     data-product-id="chair-lowrider-001"
+                     data-product-name="Classic Cedar Low Rider"
+                     data-product-price="27500">
+              <div class="product-card__image">
+                <img src="images/products/chair-lowrider-001.svg"
+                     alt="Classic cedar Adirondack low rider chair with wide armrests"
+                     loading="lazy" width="400" height="300">
+              </div>
+              <div class="product-card__info">
+                <h3 class="product-card__name">Classic Cedar Low Rider</h3>
+                <p class="product-card__description">Sit back and relax in this low-profile Adirondack. Wide armrests, deep recline, built from aromatic cedar.</p>
+                <span class="product-card__price">$275.00</span>
+                <div class="product-card__actions">
+                  <label for="qty-chair-lowrider-001" class="sr-only">Quantity</label>
+                  <input type="number" id="qty-chair-lowrider-001" class="product-card__qty"
+                         value="1" min="1" step="1" aria-label="Quantity for Classic Cedar Low Rider">
+                  <button class="btn btn--accent product-card__add" type="button"
+                          aria-label="Add Classic Cedar Low Rider to cart">Add to Cart</button>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <!-- ---- Mid Stationary (T023) ---- -->
+        <section class="category-section">
+          <h3>Mid Stationary</h3>
+          <div class="product-grid">
+            <!-- ADD NEW MID STATIONARY CHAIRS BELOW -->
+            <article class="product-card"
+                     data-product-id="chair-mid-stationary-001"
+                     data-product-name="White Oak Mid Stationary"
+                     data-product-price="32500">
+              <div class="product-card__image">
+                <img src="images/products/chair-mid-stationary-001.svg"
+                     alt="White oak Adirondack mid stationary chair with contoured seat"
+                     loading="lazy" width="400" height="300">
+              </div>
+              <div class="product-card__info">
+                <h3 class="product-card__name">White Oak Mid Stationary</h3>
+                <p class="product-card__description">Perfectly balanced height with a contoured seat. Solid white oak construction for years of enjoyment.</p>
+                <span class="product-card__price">$325.00</span>
+                <div class="product-card__actions">
+                  <label for="qty-chair-mid-stationary-001" class="sr-only">Quantity</label>
+                  <input type="number" id="qty-chair-mid-stationary-001" class="product-card__qty"
+                         value="1" min="1" step="1" aria-label="Quantity for White Oak Mid Stationary">
+                  <button class="btn btn--accent product-card__add" type="button"
+                          aria-label="Add White Oak Mid Stationary to cart">Add to Cart</button>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <!-- ---- High Top (T024) ---- -->
+        <section class="category-section">
+          <h3>High Top</h3>
+          <div class="product-grid">
+            <!-- ADD NEW HIGH TOP CHAIRS BELOW -->
+            <article class="product-card"
+                     data-product-id="chair-high-top-001"
+                     data-product-name="Cedar High Top Adirondack"
+                     data-product-price="35000">
+              <div class="product-card__image">
+                <img src="images/products/chair-high-top-001.svg"
+                     alt="Cedar high top Adirondack chair with elevated seating"
+                     loading="lazy" width="400" height="300">
+              </div>
+              <div class="product-card__info">
+                <h3 class="product-card__name">Cedar High Top Adirondack</h3>
+                <p class="product-card__description">Bar-height Adirondack perfect for decks and elevated patios. Easy in, easy out, same classic comfort.</p>
+                <span class="product-card__price">$350.00</span>
+                <div class="product-card__actions">
+                  <label for="qty-chair-high-top-001" class="sr-only">Quantity</label>
+                  <input type="number" id="qty-chair-high-top-001" class="product-card__qty"
+                         value="1" min="1" step="1" aria-label="Quantity for Cedar High Top Adirondack">
+                  <button class="btn btn--accent product-card__add" type="button"
+                          aria-label="Add Cedar High Top Adirondack to cart">Add to Cart</button>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <!-- ---- Rocker (T025) ---- -->
+        <section class="category-section">
+          <h3>Rocker</h3>
+          <div class="product-grid">
+            <!-- ADD NEW ROCKER CHAIRS BELOW -->
+            <article class="product-card"
+                     data-product-id="chair-rocker-001"
+                     data-product-name="Classic Cedar Rocker"
+                     data-product-price="37500">
+              <div class="product-card__image">
+                <img src="images/products/chair-rocker-001.svg"
+                     alt="Classic cedar Adirondack rocking chair"
+                     loading="lazy" width="400" height="300">
+              </div>
+              <div class="product-card__info">
+                <h3 class="product-card__name">Classic Cedar Rocker</h3>
+                <p class="product-card__description">The perfect porch companion. Smooth rocking motion with all the comfort of a classic Adirondack.</p>
+                <span class="product-card__price">$375.00</span>
+                <div class="product-card__actions">
+                  <label for="qty-chair-rocker-001" class="sr-only">Quantity</label>
+                  <input type="number" id="qty-chair-rocker-001" class="product-card__qty"
+                         value="1" min="1" step="1" aria-label="Quantity for Classic Cedar Rocker">
+                  <button class="btn btn--accent product-card__add" type="button"
+                          aria-label="Add Classic Cedar Rocker to cart">Add to Cart</button>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
+      </section>
+
+      <!-- ==================== CUSTOM BOARD ORDER (T029) ==================== -->
+      <section class="custom-order-section" id="custom-order">
+        <h2>Create Your Custom Board</h2>
+        <p>Design a one-of-a-kind cutting board. Choose your pattern and wood types, and we'll craft it by hand just for you.</p>
+
+        <div id="custom-order-success" class="form-success">
+          Your custom board order has been submitted! We'll reach out within 1–2 business days to confirm details and pricing.
+        </div>
+        <div id="custom-order-error" class="form-error-message">
+          Something went wrong. Please try again or contact us directly.
+        </div>
+
+        <form action="https://formspree.io/f/{FORMSPREE_CUSTOM_ORDER_ID}" method="POST" class="custom-order-form">
+          <input type="text" name="_gotcha" style="display:none" tabindex="-1" autocomplete="off">
+          <input type="hidden" name="_subject" value="New Custom Board Order">
+
+          <fieldset>
+            <legend>Choose a Pattern</legend>
+            <div class="option-group">
+              <label class="option-label">
+                <input type="radio" name="pattern" value="End Grain"> <span>End Grain</span>
+              </label>
+              <label class="option-label">
+                <input type="radio" name="pattern" value="Edge Grain"> <span>Edge Grain</span>
+              </label>
+              <label class="option-label">
+                <input type="radio" name="pattern" value="Herringbone"> <span>Herringbone</span>
+              </label>
+              <label class="option-label">
+                <input type="radio" name="pattern" value="Chevron"> <span>Chevron</span>
+              </label>
+              <label class="option-label">
+                <input type="radio" name="pattern" value="Brick"> <span>Brick</span>
+              </label>
+              <label class="option-label">
+                <input type="radio" name="pattern" value="Butcher Block"> <span>Butcher Block</span>
+              </label>
+            </div>
+            <p id="pattern-error" class="field-error">Please select a pattern.</p>
+          </fieldset>
+
+          <fieldset>
+            <legend>Select Wood Types</legend>
+            <div class="option-group">
+              <label class="option-label">
+                <input type="checkbox" name="wood_types" value="Maple"> <span>Maple</span>
+              </label>
+              <label class="option-label">
+                <input type="checkbox" name="wood_types" value="Walnut"> <span>Walnut</span>
+              </label>
+              <label class="option-label">
+                <input type="checkbox" name="wood_types" value="Cherry"> <span>Cherry</span>
+              </label>
+              <label class="option-label">
+                <input type="checkbox" name="wood_types" value="Padauk"> <span>Padauk</span>
+              </label>
+              <label class="option-label">
+                <input type="checkbox" name="wood_types" value="Purple Heart"> <span>Purple Heart</span>
+              </label>
+              <label class="option-label">
+                <input type="checkbox" name="wood_types" value="White Oak"> <span>White Oak</span>
+              </label>
+            </div>
+            <p id="wood-error" class="field-error">Please select at least one wood type.</p>
+          </fieldset>
+
+          <fieldset>
+            <legend>Your Information</legend>
+            <div class="contact-fields">
+              <div class="form-group">
+                <label for="custom-name">Name <span aria-hidden="true">*</span></label>
+                <input type="text" id="custom-name" name="name" required autocomplete="name">
+                <p id="name-error" class="field-error">Please enter your name.</p>
+              </div>
+              <div class="form-group">
+                <label for="custom-email">Email <span aria-hidden="true">*</span></label>
+                <input type="email" id="custom-email" name="email" required autocomplete="email">
+                <p id="email-error" class="field-error">Please enter a valid email address.</p>
+              </div>
+              <div class="form-group">
+                <label for="custom-phone">Phone (optional)</label>
+                <input type="tel" id="custom-phone" name="phone" autocomplete="tel">
+              </div>
+            </div>
+          </fieldset>
+
+          <button type="submit" class="btn btn--primary">Submit Custom Order</button>
+        </form>
+      </section>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer__content">
+        <div class="footer__brand">
+          <p class="footer__name">Mitch's Hardwoods</p>
+          <p class="footer__tagline">Handcrafted in Woodstock, GA</p>
+        </div>
+        <div class="footer__contact">
+          <p><a href="tel:+1XXXXXXXXXX">(XXX) XXX-XXXX</a></p>
+          <p><a href="mailto:email@example.com">email@example.com</a></p>
+          <p>Woodstock, GA</p>
+        </div>
+      </div>
+      <div class="footer__copyright">
+        <p>&copy; 2026 Mitch's Hardwoods. All rights reserved.</p>
+      </div>
+    </div>
+  </footer>
+
+  <div id="cart-overlay" class="cart-overlay"></div>
+  <aside id="cart-panel" class="cart-panel" aria-label="Shopping cart" aria-hidden="true">
+    <div class="cart-panel__header">
+      <h2 class="cart-panel__title">Your Cart</h2>
+      <button type="button" class="cart-panel__close" aria-label="Close cart">&times;</button>
+    </div>
+    <div class="cart-panel__body">
+      <p class="cart-panel__empty">Your cart is empty.</p>
+    </div>
+    <div class="cart-panel__footer" style="display:none">
+      <div class="cart-panel__total">
+        <span>Total:</span>
+        <span class="cart-panel__total-amount">$0.00</span>
+      </div>
+      <button type="button" class="btn btn--primary cart-panel__quote-btn">Request Quote</button>
+    </div>
+  </aside>
+
+  <script src="js/main.js"></script>
+</body>
+</html>

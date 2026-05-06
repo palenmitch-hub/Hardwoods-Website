@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upcoming Events | Mitch's Hardwoods</title>
+  <meta name="description" content="See where Mitch's Hardwoods will be selling handcrafted cutting boards and Adirondack chairs at local markets and festivals in Georgia.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Skip to content</a>
+
+  <header class="site-header">
+    <div class="container">
+      <a href="index.html" class="site-header__brand">Mitch's Hardwoods</a>
+      <div class="site-header__right">
+        <input type="checkbox" id="nav-toggle" class="nav-toggle">
+        <label for="nav-toggle" class="nav-toggle-label" aria-label="Toggle navigation" aria-expanded="false">
+          <span class="hamburger"></span>
+        </label>
+        <nav class="nav-links" aria-label="Main navigation">
+          <a href="index.html" class="nav-link">Home</a>
+          <a href="catalog.html" class="nav-link">Catalog</a>
+          <a href="gallery.html" class="nav-link">Gallery</a>
+          <a href="events.html" class="nav-link nav-link--active">Events</a>
+        </nav>
+        <button type="button" id="cart-toggle" class="cart-toggle" aria-label="Open shopping cart">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm10 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM7.16 14.26l.04-.12.96-1.74h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49A1 1 0 0020.07 4H5.21l-.94-2H1v2h2l3.6 7.59-1.35 2.44C4.52 15.37 5.48 17 7 17h12v-2H7.42a.25.25 0 01-.26-.24z"/></svg>
+          <span id="cart-count" class="cart-badge" hidden>0</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main-content">
+    <div class="container">
+      <div class="page-header">
+        <h1>Upcoming Events</h1>
+        <p>Come see our work in person at local markets and festivals</p>
+      </div>
+
+      <!-- Calendar View (T034) -->
+      <section class="events-calendar">
+        <noscript>
+          <p style="text-align:center; padding:1rem; background:#E8E2DA; border-radius:8px; margin-bottom:1.5rem;">
+            Enable JavaScript to view the interactive calendar. See the event list below.
+          </p>
+        </noscript>
+        <div class="calendar-nav">
+          <button type="button" id="calendar-prev" aria-label="Previous month">&larr;</button>
+          <span id="calendar-title" class="calendar-nav__title"></span>
+          <button type="button" id="calendar-next" aria-label="Next month">&rarr;</button>
+        </div>
+        <div id="calendar-grid" class="calendar-grid"></div>
+      </section>
+
+      <!-- Event List (T034) -->
+      <section class="events-list">
+        <h2>Event List</h2>
+        <ul>
+          <!-- ADD NEW EVENTS BELOW -->
+          <li class="event-item">
+            <h3 class="event-item__name">Woodstock Arts Festival</h3>
+            <time class="event-item__date" datetime="2026-06-14">June 14, 2026</time>
+            <span class="event-item__location">Downtown Woodstock, GA</span>
+          </li>
+
+          <li class="event-item">
+            <h3 class="event-item__name">Roswell Farmers Market</h3>
+            <time class="event-item__date" datetime="2026-06-21">June 21, 2026</time>
+            <span class="event-item__location">Roswell Town Square</span>
+          </li>
+
+          <li class="event-item">
+            <h3 class="event-item__name">Marietta Square Art Walk</h3>
+            <time class="event-item__date" datetime="2026-07-12">July 12, 2026</time>
+            <span class="event-item__location">Marietta Square, GA</span>
+          </li>
+
+          <li class="event-item">
+            <h3 class="event-item__name">Canton First Saturday</h3>
+            <time class="event-item__date" datetime="2026-08-01">August 1, 2026</time>
+            <span class="event-item__location">Downtown Canton, GA</span>
+          </li>
+          <!--
+            TEMPLATE: Copy this block to add a new event.
+            IMPORTANT: Also add the event to the EVENTS array in js/main.js
+            <li class="event-item">
+              <h3 class="event-item__name">EVENT NAME</h3>
+              <time class="event-item__date" datetime="YYYY-MM-DD">MONTH DAY, YEAR</time>
+              <span class="event-item__location">VENUE, CITY, GA</span>
+            </li>
+          -->
+        </ul>
+      </section>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer__content">
+        <div class="footer__brand">
+          <p class="footer__name">Mitch's Hardwoods</p>
+          <p class="footer__tagline">Handcrafted in Woodstock, GA</p>
+        </div>
+        <div class="footer__contact">
+          <p><a href="tel:+1XXXXXXXXXX">(XXX) XXX-XXXX</a></p>
+          <p><a href="mailto:email@example.com">email@example.com</a></p>
+          <p>Woodstock, GA</p>
+        </div>
+      </div>
+      <div class="footer__copyright">
+        <p>&copy; 2026 Mitch's Hardwoods. All rights reserved.</p>
+      </div>
+    </div>
+  </footer>
+
+  <div id="cart-overlay" class="cart-overlay"></div>
+  <aside id="cart-panel" class="cart-panel" aria-label="Shopping cart" aria-hidden="true">
+    <div class="cart-panel__header">
+      <h2 class="cart-panel__title">Your Cart</h2>
+      <button type="button" class="cart-panel__close" aria-label="Close cart">&times;</button>
+    </div>
+    <div class="cart-panel__body">
+      <p class="cart-panel__empty">Your cart is empty.</p>
+    </div>
+    <div class="cart-panel__footer" style="display:none">
+      <div class="cart-panel__total">
+        <span>Total:</span>
+        <span class="cart-panel__total-amount">$0.00</span>
+      </div>
+      <button type="button" class="btn btn--primary cart-panel__quote-btn">Request Quote</button>
+    </div>
+  </aside>
+
+  <script src="js/main.js"></script>
+</body>
+</html>

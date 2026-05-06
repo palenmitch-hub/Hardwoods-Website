@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mitch's Hardwoods | Handcrafted Cutting Boards & Adirondack Chairs</title>
+  <meta name="description" content="Handcrafted cutting boards and Adirondack chairs built with care in Woodstock, GA. Browse our collection or design a custom board.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Skip to content</a>
+
+  <header class="site-header">
+    <div class="container">
+      <a href="index.html" class="site-header__brand">Mitch's Hardwoods</a>
+      <div class="site-header__right">
+        <input type="checkbox" id="nav-toggle" class="nav-toggle">
+        <label for="nav-toggle" class="nav-toggle-label" aria-label="Toggle navigation" aria-expanded="false">
+          <span class="hamburger"></span>
+        </label>
+        <nav class="nav-links" aria-label="Main navigation">
+          <a href="index.html" class="nav-link nav-link--active">Home</a>
+          <a href="catalog.html" class="nav-link">Catalog</a>
+          <a href="gallery.html" class="nav-link">Gallery</a>
+          <a href="events.html" class="nav-link">Events</a>
+        </nav>
+        <button type="button" id="cart-toggle" class="cart-toggle" aria-label="Open shopping cart">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm10 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM7.16 14.26l.04-.12.96-1.74h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49A1 1 0 0020.07 4H5.21l-.94-2H1v2h2l3.6 7.59-1.35 2.44C4.52 15.37 5.48 17 7 17h12v-2H7.42a.25.25 0 01-.26-.24z"/></svg>
+          <span id="cart-count" class="cart-badge" hidden>0</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main-content">
+    <!-- Hero Section (T026) -->
+    <section class="hero">
+      <div class="hero__content">
+        <h1>Handcrafted Hardwood — Built in Woodstock, GA</h1>
+        <p>Custom cutting boards and Adirondack chairs made by hand, one piece at a time.</p>
+        <a href="catalog.html" class="btn btn--accent">Shop Our Collection</a>
+      </div>
+    </section>
+
+    <!-- Featured Products (T028) -->
+    <section class="home-section">
+      <div class="container">
+        <h2>Featured Products</h2>
+        <div class="featured-grid">
+          <article class="product-card">
+            <div class="product-card__image">
+              <a href="catalog.html">
+                <img src="images/products/cb-pattern-001.svg"
+                     alt="Chevron pattern cutting board in maple and walnut"
+                     loading="lazy" width="400" height="300">
+              </a>
+            </div>
+            <div class="product-card__info">
+              <h3 class="product-card__name"><a href="catalog.html">Chevron Maple & Walnut Board</a></h3>
+              <p class="product-card__description">Eye-catching chevron pattern combining light maple and dark walnut.</p>
+              <span class="product-card__price">$75.00</span>
+            </div>
+          </article>
+
+          <article class="product-card">
+            <div class="product-card__image">
+              <a href="catalog.html">
+                <img src="images/products/cb-intricate-001.svg"
+                     alt="3D tumbling block pattern cutting board"
+                     loading="lazy" width="400" height="300">
+              </a>
+            </div>
+            <div class="product-card__info">
+              <h3 class="product-card__name"><a href="catalog.html">3D Tumbling Block Board</a></h3>
+              <p class="product-card__description">Stunning 3D optical illusion created with maple, walnut, and cherry.</p>
+              <span class="product-card__price">$125.00</span>
+            </div>
+          </article>
+
+          <article class="product-card">
+            <div class="product-card__image">
+              <a href="catalog.html">
+                <img src="images/products/chair-rocker-001.svg"
+                     alt="Classic cedar Adirondack rocking chair"
+                     loading="lazy" width="400" height="300">
+              </a>
+            </div>
+            <div class="product-card__info">
+              <h3 class="product-card__name"><a href="catalog.html">Classic Cedar Rocker</a></h3>
+              <p class="product-card__description">The perfect porch companion with smooth rocking motion.</p>
+              <span class="product-card__price">$375.00</span>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- About Section -->
+    <section class="about-section">
+      <div class="container">
+        <div class="about-content">
+          <h2>About the Shop</h2>
+          <p>Mitch's Hardwoods is a one-man custom woodworking shop based in Woodstock, Georgia. Every cutting board and Adirondack chair is handcrafted from premium hardwoods, built to last for generations.</p>
+          <p>Whether you're looking for a beautiful end-grain board for your kitchen or a comfortable chair for your porch, each piece is made with the same attention to detail and love of the craft.</p>
+          <a href="catalog.html" class="btn btn--outline">Browse the Catalog</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Events Teaser -->
+    <section class="home-section events-teaser">
+      <div class="container">
+        <h2>See Us in Person</h2>
+        <p>We attend local markets and festivals throughout the year. Come see the craftsmanship up close and find your next piece.</p>
+        <a href="events.html" class="btn btn--primary">View Upcoming Events</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer__content">
+        <div class="footer__brand">
+          <p class="footer__name">Mitch's Hardwoods</p>
+          <p class="footer__tagline">Handcrafted in Woodstock, GA</p>
+        </div>
+        <div class="footer__contact">
+          <p><a href="tel:+1XXXXXXXXXX">(XXX) XXX-XXXX</a></p>
+          <p><a href="mailto:email@example.com">email@example.com</a></p>
+          <p>Woodstock, GA</p>
+        </div>
+      </div>
+      <div class="footer__copyright">
+        <p>&copy; 2026 Mitch's Hardwoods. All rights reserved.</p>
+      </div>
+    </div>
+  </footer>
+
+  <div id="cart-overlay" class="cart-overlay"></div>
+  <aside id="cart-panel" class="cart-panel" aria-label="Shopping cart" aria-hidden="true">
+    <div class="cart-panel__header">
+      <h2 class="cart-panel__title">Your Cart</h2>
+      <button type="button" class="cart-panel__close" aria-label="Close cart">&times;</button>
+    </div>
+    <div class="cart-panel__body">
+      <p class="cart-panel__empty">Your cart is empty.</p>
+    </div>
+    <div class="cart-panel__footer" style="display:none">
+      <div class="cart-panel__total">
+        <span>Total:</span>
+        <span class="cart-panel__total-amount">$0.00</span>
+      </div>
+      <button type="button" class="btn btn--primary cart-panel__quote-btn">Request Quote</button>
+    </div>
+  </aside>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
