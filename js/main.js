@@ -25,11 +25,13 @@
     localStorage.setItem(CART_KEY, JSON.stringify(cart));
   }
 
-  function addToCart(id, name, price, qty) {
+  function addToCart(id, name, price, qty, engraving) {
     var cart = getCart();
+    // Items with engraving get a unique suffix so they stay separate
+    var cartId = engraving ? id + '::eng::' + engraving : id;
     var existing = null;
     for (var i = 0; i < cart.length; i++) {
-      if (cart[i].id === id) {
+      if (cart[i].id === cartId) {
         existing = cart[i];
         break;
       }
@@ -37,7 +39,9 @@
     if (existing) {
       existing.qty += qty;
     } else {
-      cart.push({ id: id, name: name, price: price, qty: qty });
+      var entry = { id: cartId, name: name, price: price, qty: qty };
+      if (engraving) entry.engraving = engraving;
+      cart.push(entry);
     }
     saveCart(cart);
   }
@@ -114,10 +118,14 @@
       var item = cart[i];
       var itemTotal = item.price * item.qty;
       total += itemTotal;
+      var engravingLine = item.engraving
+        ? '<p class="cart-item__engraving">\u270E \u201C' + escapeHtml(item.engraving) + '\u201D</p>'
+        : '';
       html +=
         '<div class="cart-item">' +
           '<div class="cart-item__info">' +
             '<p class="cart-item__name">' + escapeHtml(item.name) + '</p>' +
+            engravingLine +
             '<p class="cart-item__detail">Qty: ' + item.qty + ' &times; ' + formatPrice(item.price) + '</p>' +
           '</div>' +
           '<button class="cart-item__remove" data-remove-id="' + escapeHtml(item.id) + '" aria-label="Remove ' + escapeHtml(item.name) + ' from cart" type="button">&times;</button>' +
@@ -198,6 +206,90 @@
 
   // ---- Add to Cart Delegation (T014) ----
 
+  var ENGRAVING_PRICE = 2000; // $20.00 in cents
+
+  function isCuttingBoard(productId) {
+    return productId && productId.indexOf('cb-') === 0;
+  }
+
+  function showEngravingModal(name, callback) {
+    // Remove any existing modal
+    var old = document.getElementById('engraving-modal');
+    if (old) old.remove();
+
+    var modal = document.createElement('div');
+    modal.id = 'engraving-modal';
+    modal.className = 'engraving-modal';
+    modal.innerHTML =
+      '<div class="engraving-modal__backdrop"></div>' +
+      '<div class="engraving-modal__dialog" role="dialog" aria-labelledby="eng-title">' +
+        '<h3 id="eng-title">Add Custom Engraving?</h3>' +
+        '<p>Add a personal engraving to your <strong>' + escapeHtml(name) + '</strong> for an additional <strong>$20.00</strong>.</p>' +
+        '<div id="eng-text-wrap" class="engraving-modal__text-wrap" style="display:none">' +
+          '<label for="eng-text">Engraving text (50 characters max)</label>' +
+          '<input type="text" id="eng-text" class="engraving-modal__input" maxlength="50" placeholder="e.g. Happy Anniversary!">' +
+          '<span id="eng-char-count" class="engraving-modal__char-count">0 / 50</span>' +
+        '</div>' +
+        '<div class="engraving-modal__actions">' +
+          '<button type="button" class="btn btn--outline" id="eng-skip">No Thanks</button>' +
+          '<button type="button" class="btn btn--accent" id="eng-add">Add Engraving</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(modal);
+
+    var textWrap = document.getElementById('eng-text-wrap');
+    var textInput = document.getElementById('eng-text');
+    var charCount = document.getElementById('eng-char-count');
+    var addBtn = document.getElementById('eng-add');
+    var skipBtn = document.getElementById('eng-skip');
+    var backdrop = modal.querySelector('.engraving-modal__backdrop');
+    var engravingChosen = false;
+
+    function cleanup() {
+      modal.remove();
+    }
+
+    addBtn.addEventListener('click', function () {
+      if (!engravingChosen) {
+        // First click: show text field
+        engravingChosen = true;
+        textWrap.style.display = '';
+        textInput.focus();
+        addBtn.textContent = 'Confirm & Add to Cart';
+      } else {
+        // Second click: confirm
+        var text = textInput.value.trim();
+        if (!text) { textInput.focus(); return; }
+        callback(text);
+        cleanup();
+      }
+    });
+
+    skipBtn.addEventListener('click', function () {
+      callback(null);
+      cleanup();
+    });
+
+    backdrop.addEventListener('click', function () {
+      callback(null);
+      cleanup();
+    });
+
+    textInput.addEventListener('input', function () {
+      charCount.textContent = textInput.value.length + ' / 50';
+    });
+
+    // Trap focus and handle Escape
+    modal.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        callback(null);
+        cleanup();
+      }
+    });
+
+    addBtn.focus();
+  }
+
   function initAddToCart() {
     document.addEventListener('click', function (e) {
       var btn = e.target.closest('.product-card__add');
@@ -215,9 +307,19 @@
       if (isNaN(qty) || qty < 1) qty = 1;
       if (isNaN(price)) return;
 
-      addToCart(id, name, price, qty);
-      updateCartBadge();
-      showToast(qty + 'x ' + name + ' added to cart');
+      if (isCuttingBoard(id)) {
+        showEngravingModal(name, function (engravingText) {
+          var finalPrice = engravingText ? price + ENGRAVING_PRICE : price;
+          var finalName = engravingText ? name + ' (Engraved)' : name;
+          addToCart(id, finalName, finalPrice, qty, engravingText || undefined);
+          updateCartBadge();
+          showToast(qty + 'x ' + finalName + ' added to cart');
+        });
+      } else {
+        addToCart(id, name, price, qty);
+        updateCartBadge();
+        showToast(qty + 'x ' + name + ' added to cart');
+      }
     });
   }
 
