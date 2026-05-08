@@ -932,14 +932,13 @@ p {
 /* --- Hero Section (Full-viewport, Rivian-style) --- */
 .hero {
   position: relative;
-  min-height: 100vh;
+  min-height: 70vh;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
   text-align: center;
   overflow: hidden;
   padding: var(--space-3xl) var(--space-md);
-  padding-bottom: clamp(4rem, 12vh, 8rem);
   color: var(--color-white);
 }
 
