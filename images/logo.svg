@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 60" fill="none">
+  <defs>
+    <clipPath id="bg-clip-full">
+      <rect x="0" y="4" width="52" height="52" rx="6"/>
+    </clipPath>
+  </defs>
+  <rect x="0" y="4" width="52" height="52" rx="6" fill="#c9a96e"/>
+  <!-- Wood grain texture - vertical flowing, multi-layered -->
+  <g clip-path="url(#bg-clip-full)" fill="none" stroke-linecap="round">
+    <!-- Dark grain streaks -->
+    <g stroke="rgba(120,80,30,0.45)">
+      <path d="M2,2 Q0,10 2,20 Q4,30 2,40 Q0,50 2,58" stroke-width="2.5"/>
+      <path d="M6,2 Q4,12 7,22 Q9,32 6,42 Q4,52 6,58" stroke-width="1.8"/>
+      <path d="M10,2 Q8,8 11,18 Q13,28 10,38 Q8,48 10,58" stroke-width="2.2"/>
+      <path d="M14,2 Q12,12 15,22 Q17,32 14,42 Q12,52 14,58" stroke-width="1.5"/>
+      <path d="M18,2 Q16,8 19,18 Q22,28 19,38 Q16,48 18,58" stroke-width="2.5"/>
+      <path d="M22,2 Q20,10 23,20 Q26,30 23,40 Q20,50 22,58" stroke-width="1.8"/>
+      <path d="M26,2 Q24,8 27,16 Q30,26 27,36 Q24,48 26,58" stroke-width="2"/>
+      <path d="M30,2 Q28,10 31,20 Q34,30 31,40 Q28,50 30,58" stroke-width="1.6"/>
+      <path d="M34,2 Q32,8 35,18 Q38,28 35,38 Q32,48 34,58" stroke-width="2.2"/>
+      <path d="M38,2 Q36,12 39,22 Q41,32 39,42 Q37,52 39,58" stroke-width="1.8"/>
+      <path d="M42,2 Q40,8 43,18 Q45,28 43,40 Q41,50 43,58" stroke-width="1.5"/>
+      <path d="M46,2 Q44,10 47,20 Q49,30 47,42 Q45,52 47,58" stroke-width="2"/>
+      <path d="M50,2 Q48,8 51,18 Q52,28 51,40 Q49,52 51,58" stroke-width="1.6"/>
+    </g>
+    <!-- Mid-tone grain -->
+    <g stroke="rgba(160,110,50,0.35)">
+      <path d="M4,2 Q2,12 5,24 Q7,36 4,48 Q2,56 4,58" stroke-width="1.2"/>
+      <path d="M12,2 Q10,10 13,22 Q15,32 12,44 Q10,54 12,58" stroke-width="1.5"/>
+      <path d="M20,2 Q18,8 21,18 Q24,30 21,40 Q18,52 20,58" stroke-width="1"/>
+      <path d="M28,2 Q26,12 29,22 Q32,34 29,44 Q26,54 28,58" stroke-width="1.3"/>
+      <path d="M36,2 Q34,8 37,18 Q40,30 37,40 Q34,50 36,58" stroke-width="1.5"/>
+      <path d="M44,2 Q42,10 45,22 Q47,32 45,44 Q43,54 45,58" stroke-width="1.1"/>
+    </g>
+    <!-- Light highlights -->
+    <g stroke="rgba(255,230,180,0.3)">
+      <path d="M5,2 Q3,12 6,24 Q8,36 5,48 Q3,56 5,58" stroke-width="1"/>
+      <path d="M16,2 Q14,10 17,20 Q19,32 16,42 Q14,52 16,58" stroke-width="1.2"/>
+      <path d="M24,2 Q22,8 25,18 Q28,30 25,40 Q22,52 24,58" stroke-width="0.8"/>
+      <path d="M32,2 Q30,12 33,22 Q36,34 33,44 Q30,54 32,58" stroke-width="1.1"/>
+      <path d="M40,2 Q38,8 41,18 Q43,30 41,40 Q39,50 41,58" stroke-width="1"/>
+      <path d="M48,2 Q46,10 49,22 Q51,32 49,44 Q47,54 49,58" stroke-width="0.9"/>
+    </g>
+    <!-- Fine grain detail -->
+    <g stroke="rgba(100,65,20,0.3)">
+      <path d="M3,2 Q1,14 4,26 Q6,38 3,50 Q1,58 3,58" stroke-width="0.5"/>
+      <path d="M9,2 Q7,10 10,22 Q12,32 9,44 Q7,56 9,58" stroke-width="0.4"/>
+      <path d="M15,2 Q13,8 16,20 Q18,30 15,42 Q13,54 15,58" stroke-width="0.5"/>
+      <path d="M21,2 Q19,12 22,24 Q24,34 21,46 Q19,56 21,58" stroke-width="0.4"/>
+      <path d="M27,2 Q25,8 28,18 Q31,30 28,40 Q25,52 27,58" stroke-width="0.5"/>
+      <path d="M33,2 Q31,10 34,20 Q37,32 34,42 Q31,54 33,58" stroke-width="0.4"/>
+      <path d="M39,2 Q37,8 40,18 Q42,28 40,40 Q38,52 40,58" stroke-width="0.5"/>
+      <path d="M45,2 Q43,12 46,22 Q48,34 46,44 Q44,56 46,58" stroke-width="0.4"/>
+    </g>
+    <!-- Wavy cross-grain accents -->
+    <g stroke="rgba(90,55,15,0.2)">
+      <path d="M0,16 Q6,14 12,17 Q18,20 24,16 Q30,12 36,16 Q42,20 48,16 Q52,14 54,16" stroke-width="0.7"/>
+      <path d="M0,32 Q6,30 12,33 Q18,36 24,32 Q30,28 36,32 Q42,36 48,32 Q52,30 54,32" stroke-width="0.6"/>
+      <path d="M0,46 Q6,44 12,47 Q18,50 24,46 Q30,42 36,46 Q42,50 48,46 Q52,44 54,46" stroke-width="0.7"/>
+    </g>
+  </g>
+  <g stroke="#0a0a0a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <polyline points="6,40 6,10 16,28 26,10 26,50"/>
+    <line x1="26" y1="34" x2="46" y2="34"/>
+    <line x1="46" y1="20" x2="46" y2="50"/>
+  </g>
+  <!-- Wordmark -->
+  <text x="64" y="30" font-family="'Inter','Helvetica Neue',Arial,sans-serif" font-weight="700" font-size="22" fill="#ffffff" letter-spacing="-0.5">MITCH'S</text>
+  <text x="64" y="50" font-family="'Inter','Helvetica Neue',Arial,sans-serif" font-weight="300" font-size="16" fill="#c9a96e" letter-spacing="3">HARDWOODS</text>
+</svg>

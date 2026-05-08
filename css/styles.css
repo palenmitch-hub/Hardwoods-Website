@@ -21,6 +21,9 @@ body {
   line-height: 1.6;
   color: var(--color-text);
   background-color: var(--color-bg);
+  background-image: url('../images/wood-grain-bg.svg');
+  background-repeat: repeat;
+  background-size: 600px 600px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -259,6 +262,14 @@ p {
   text-decoration: none;
   white-space: nowrap;
   letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+}
+
+.site-header__logo {
+  height: 40px;
+  width: auto;
+  display: block;
 }
 
 .site-header__brand:hover,
@@ -968,6 +979,14 @@ p {
   position: relative;
   z-index: 2;
   max-width: 800px;
+}
+
+.hero__logo {
+  display: block;
+  margin: 0 auto var(--space-lg);
+  height: clamp(120px, 22vw, 220px);
+  width: auto;
+  filter: drop-shadow(0 2px 12px rgba(0, 0, 0, 0.5));
 }
 
 .hero h1 {
