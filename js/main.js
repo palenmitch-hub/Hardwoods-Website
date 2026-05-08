@@ -25,10 +25,15 @@
     localStorage.setItem(CART_KEY, JSON.stringify(cart));
   }
 
-  function addToCart(id, name, price, qty, engraving) {
+  function addToCart(id, name, price, qty, engraving, options) {
     var cart = getCart();
-    // Items with engraving get a unique suffix so they stay separate
-    var cartId = engraving ? id + '::eng::' + engraving : id;
+    // Items with custom options get a unique suffix so they stay separate
+    var cartId = id;
+    if (options) {
+      cartId = id + '::opt::' + JSON.stringify(options);
+    } else if (engraving) {
+      cartId = id + '::eng::' + engraving;
+    }
     var existing = null;
     for (var i = 0; i < cart.length; i++) {
       if (cart[i].id === cartId) {
@@ -41,6 +46,7 @@
     } else {
       var entry = { id: cartId, name: name, price: price, qty: qty };
       if (engraving) entry.engraving = engraving;
+      if (options) entry.options = options;
       cart.push(entry);
     }
     saveCart(cart);
@@ -121,14 +127,38 @@
       var engravingLine = item.engraving
         ? '<p class="cart-item__engraving">\u270E \u201C' + escapeHtml(item.engraving) + '\u201D</p>'
         : '';
+      var optionsHtml = '';
+      if (item.options) {
+        var o = item.options;
+        optionsHtml = '<div class="cart-item__options">';
+        if (o.mainWood) optionsHtml += '<span>Main: ' + escapeHtml(o.mainWood) + '</span>';
+        if (o.stripeWood) optionsHtml += '<span>Stripe: ' + escapeHtml(o.stripeWood) + '</span>';
+        if (o.accentWood) optionsHtml += '<span>Accent: ' + escapeHtml(o.accentWood) + '</span>';
+        if (o.handles) optionsHtml += '<span>Handles: Yes (+$10)</span>';
+        if (o.feet && o.feet !== 'none') optionsHtml += '<span>Feet: ' + escapeHtml(o.feet) + (o.feet === 'Basic' ? ' (+$5)' : ' (+$20)') + '</span>';
+        if (o.engravingLines) {
+          var lines = o.engravingLines;
+          var engParts = [];
+          if (lines.top) engParts.push(lines.top);
+          if (lines.middle) engParts.push(lines.middle);
+          if (lines.bottom) engParts.push(lines.bottom);
+          if (engParts.length) optionsHtml += '<span>\u270E ' + escapeHtml(engParts.join(' / ')) + '</span>';
+          if (lines.font) {
+            var fontLabels = { 'serif': 'Serif', 'sans-serif': 'Sans-Serif', 'script': 'Script', 'monospace': 'Monospace' };
+            optionsHtml += '<span>Font: ' + (fontLabels[lines.font] || lines.font) + '</span>';
+          }
+        }
+        optionsHtml += '</div>';
+      }
       html +=
         '<div class="cart-item">' +
           '<div class="cart-item__info">' +
             '<p class="cart-item__name">' + escapeHtml(item.name) + '</p>' +
             engravingLine +
+            optionsHtml +
             '<p class="cart-item__detail">Qty: ' + item.qty + ' &times; ' + formatPrice(item.price) + '</p>' +
           '</div>' +
-          '<button class="cart-item__remove" data-remove-id="' + escapeHtml(item.id) + '" aria-label="Remove ' + escapeHtml(item.name) + ' from cart" type="button">&times;</button>' +
+          '<button class="cart-item__remove" data-remove-id="' + encodeURIComponent(item.id) + '" aria-label="Remove ' + escapeHtml(item.name) + ' from cart" type="button">&times;</button>' +
         '</div>';
     }
     body.innerHTML = html;
@@ -358,7 +388,25 @@
     var total = 0;
     for (var i = 0; i < cart.length; i++) {
       var item = cart[i];
-      items.push(item.qty + 'x ' + item.name + ' (' + formatPrice(item.price) + ')');
+      var desc = item.qty + 'x ' + item.name + ' (' + formatPrice(item.price) + ')';
+      if (item.options) {
+        var parts = [];
+        if (item.options.mainWood) parts.push('Main: ' + item.options.mainWood);
+        if (item.options.stripeWood) parts.push('Stripe: ' + item.options.stripeWood);
+        if (item.options.accentWood) parts.push('Accent: ' + item.options.accentWood);
+        if (item.options.handles) parts.push('Handles: Yes');
+        if (item.options.feet) parts.push('Feet: ' + item.options.feet);
+        if (item.options.engravingLines) {
+          var el = item.options.engravingLines;
+          var engParts = [];
+          if (el.top) engParts.push(el.top);
+          if (el.middle) engParts.push(el.middle);
+          if (el.bottom) engParts.push(el.bottom);
+          if (engParts.length) parts.push('Engraving: ' + engParts.join(' | '));
+        }
+        if (parts.length) desc += ' [' + parts.join(', ') + ']';
+      }
+      items.push(desc);
       total += item.price * item.qty;
     }
 
@@ -719,7 +767,7 @@
     return m ? parseInt(m[1].replace(',', ''), 10) * 100 : 0;
   }
 
-  function buildProductCardHTML(product, id) {
+  function buildProductCardHTML(product, id, isBasicBoard) {
     var safe = escapeHtml;
     var imgs = product.images;
     var hasCarousel = imgs.length > 1;
@@ -737,9 +785,13 @@
       imagesHtml += '<button type="button" class="product-carousel__next" aria-label="Next photo">&rsaquo;</button>';
     }
 
+    var buttonLabel = isBasicBoard ? 'See All Options' : 'Add to Cart';
+    var buttonClass = isBasicBoard ? 'btn btn--outline product-card__options-btn' : 'btn btn--accent product-card__add';
+    var dataBasic = isBasicBoard ? ' data-basic-board="true"' : '';
+
     return '<article class="product-card" data-product-id="' + safe(id) +
       '" data-product-name="' + safe(product.name) +
-      '" data-product-price="' + priceToCents(product.price) + '">' +
+      '" data-product-price="' + priceToCents(product.price) + '"' + dataBasic + '>' +
       '<div class="' + imageClass + '">' + imagesHtml + '</div>' +
       '<div class="product-card__info">' +
       '<h3 class="product-card__name">' + safe(product.name) + '</h3>' +
@@ -748,7 +800,7 @@
       '<div class="product-card__actions">' +
       '<label for="qty-' + safe(id) + '" class="sr-only">Quantity</label>' +
       '<input type="number" id="qty-' + safe(id) + '" class="product-card__qty" value="1" min="1" step="1" aria-label="Quantity for ' + safe(product.name) + '">' +
-      '<button class="btn btn--accent product-card__add" type="button" aria-label="Add ' + safe(product.name) + ' to cart">Add to Cart</button>' +
+      '<button class="' + buttonClass + '" type="button" aria-label="' + buttonLabel + ' for ' + safe(product.name) + '">' + buttonLabel + '</button>' +
       '</div></div></article>';
   }
 
@@ -776,9 +828,10 @@
           if (!grid || !categories[catName]) continue;
           var products = categories[catName];
           var html = '';
+          var isBasic = (catName === 'Basic Boards');
           for (var p = 0; p < products.length; p++) {
             var id = slugify(catName, p);
-            html += buildProductCardHTML(products[p], id);
+            html += buildProductCardHTML(products[p], id, isBasic);
           }
           grid.innerHTML = html;
         }
@@ -861,7 +914,7 @@
     document.addEventListener('click', function (e) {
       var removeBtn = e.target.closest('.cart-item__remove');
       if (!removeBtn) return;
-      var id = removeBtn.getAttribute('data-remove-id');
+      var id = decodeURIComponent(removeBtn.getAttribute('data-remove-id'));
       if (id) {
         removeFromCart(id);
         updateCartBadge();
@@ -904,6 +957,405 @@
 
     // Load products from Products.md
     loadProductsFromMd();
+
+    // Load wood inventory
+    loadWoodInventory();
+
+    // Board options modal handler
+    initBoardOptions();
+
+    // Scroll reveal animations (Rivian-style)
+    initScrollReveal();
   });
+
+  // ---- Wood Inventory ----
+
+  var woodList = [];
+
+  function loadWoodInventory() {
+    fetch('Wood-Inventory.md')
+      .then(function (res) { return res.text(); })
+      .then(function (text) {
+        woodList = text.split('\n')
+          .map(function (l) { return l.trim(); })
+          .filter(function (l) { return l.length > 0; });
+      })
+      .catch(function (err) {
+        console.error('Failed to load Wood-Inventory.md:', err);
+        woodList = ['Walnut', 'Maple', 'Cherry', 'Padauk', 'Wenge', 'Limba', 'Zebra'];
+      });
+  }
+
+  // ---- Board Options Modal ----
+
+  function buildWoodSelect(name, labelText) {
+    var html = '<div class="board-opt-group">' +
+      '<label class="board-opt-group__label" for="opt-' + name + '">' + escapeHtml(labelText) + '</label>' +
+      '<select id="opt-' + name + '" name="' + name + '">' +
+      '<option value="">— Select —</option>';
+    for (var i = 0; i < woodList.length; i++) {
+      html += '<option value="' + escapeHtml(woodList[i]) + '">' + escapeHtml(woodList[i]) + '</option>';
+    }
+    html += '</select></div>';
+    return html;
+  }
+
+  function showBoardOptionsModal(productName, basePrice, qty, productId, callback) {
+    var old = document.getElementById('board-options-modal');
+    if (old) old.remove();
+
+    var HANDLE_PRICE = 1000;
+    var BASIC_FEET_PRICE = 500;
+    var BRASS_FEET_PRICE = 2000;
+    var ENGRAVING_PRICE_OPT = 2000;
+
+    var modal = document.createElement('div');
+    modal.id = 'board-options-modal';
+    modal.className = 'board-options-modal';
+
+    var dialogHtml =
+      '<div class="board-options-modal__backdrop"></div>' +
+      '<div class="board-options-modal__dialog" role="dialog" aria-labelledby="opt-title" aria-modal="true">' +
+        '<button type="button" class="board-options-modal__close" aria-label="Close">&times;</button>' +
+        '<h3 id="opt-title">' + escapeHtml(productName) + '</h3>' +
+        '<p class="board-options-modal__subtitle">Customize your board</p>' +
+        '<span class="board-options-modal__price" id="opt-live-price">' + formatPrice(basePrice) + '</span>' +
+
+        buildWoodSelect('mainWood', 'Main Wood') +
+        buildWoodSelect('stripeWood', 'Stripe Wood') +
+        buildWoodSelect('accentWood', 'Stripe Accent Wood') +
+
+        // Handles
+        '<div class="board-opt-group">' +
+          '<span class="board-opt-group__label">Handles</span>' +
+          '<div class="board-opt-radios">' +
+            '<div class="board-opt-radio">' +
+              '<input type="radio" id="opt-handles-no" name="handles" value="no" checked>' +
+              '<label for="opt-handles-no">No</label>' +
+            '</div>' +
+            '<div class="board-opt-radio">' +
+              '<input type="radio" id="opt-handles-yes" name="handles" value="yes">' +
+              '<label for="opt-handles-yes">Yes<span class="opt-price">+$10</span></label>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
+        // Feet
+        '<div class="board-opt-group">' +
+          '<span class="board-opt-group__label">Feet</span>' +
+          '<div class="board-opt-radios">' +
+            '<div class="board-opt-radio">' +
+              '<input type="radio" id="opt-feet-none" name="feet" value="none" checked>' +
+              '<label for="opt-feet-none">No Feet</label>' +
+            '</div>' +
+            '<div class="board-opt-radio">' +
+              '<input type="radio" id="opt-feet-basic" name="feet" value="basic">' +
+              '<label for="opt-feet-basic">Basic Feet<span class="opt-price">+$5</span></label>' +
+            '</div>' +
+            '<div class="board-opt-radio">' +
+              '<input type="radio" id="opt-feet-brass" name="feet" value="brass">' +
+              '<label for="opt-feet-brass">Brass Feet<span class="opt-price">+$20</span></label>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
+        // Engraving
+        '<div class="board-engraving-section">' +
+          '<div class="board-opt-group">' +
+            '<span class="board-opt-group__label">Custom Engraving</span>' +
+            '<div class="board-opt-radios">' +
+              '<div class="board-opt-radio">' +
+                '<input type="radio" id="opt-eng-no" name="engraving" value="no" checked>' +
+                '<label for="opt-eng-no">No</label>' +
+              '</div>' +
+              '<div class="board-opt-radio">' +
+                '<input type="radio" id="opt-eng-yes" name="engraving" value="yes">' +
+                '<label for="opt-eng-yes">Yes<span class="opt-price">+$20</span></label>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="board-engraving-fields" id="opt-eng-fields">' +
+            '<div class="board-opt-group">' +
+              '<label class="board-opt-group__label" for="opt-eng-font">Font</label>' +
+              '<select id="opt-eng-font" class="board-opt-group__select">' +
+                '<option value="serif">Serif (Classic)</option>' +
+                '<option value="sans-serif">Sans-Serif (Modern)</option>' +
+                '<option value="script">Script (Elegant)</option>' +
+                '<option value="monospace">Monospace (Clean)</option>' +
+              '</select>' +
+            '</div>' +
+            '<div class="engraving-row">' +
+              '<div>' +
+                '<label for="opt-eng-top">Top Line</label>' +
+                '<input type="text" id="opt-eng-top" maxlength="40" placeholder="e.g. The Johnson Family">' +
+              '</div>' +
+              '<div>' +
+                '<label for="opt-eng-top-align">Align</label>' +
+                '<select id="opt-eng-top-align">' +
+                  '<option value="center">Center</option>' +
+                  '<option value="left">Left</option>' +
+                  '<option value="right">Right</option>' +
+                '</select>' +
+              '</div>' +
+            '</div>' +
+            '<div class="engraving-row">' +
+              '<div>' +
+                '<label for="opt-eng-mid">Middle Line</label>' +
+                '<input type="text" id="opt-eng-mid" maxlength="40" placeholder="e.g. Est. 2024">' +
+              '</div>' +
+              '<div>' +
+                '<label for="opt-eng-mid-align">Align</label>' +
+                '<select id="opt-eng-mid-align">' +
+                  '<option value="center">Center</option>' +
+                  '<option value="left">Left</option>' +
+                  '<option value="right">Right</option>' +
+                '</select>' +
+              '</div>' +
+            '</div>' +
+            '<div class="engraving-row">' +
+              '<div>' +
+                '<label for="opt-eng-bot">Bottom Line</label>' +
+                '<input type="text" id="opt-eng-bot" maxlength="40" placeholder="e.g. Made with Love">' +
+              '</div>' +
+              '<div>' +
+                '<label for="opt-eng-bot-align">Align</label>' +
+                '<select id="opt-eng-bot-align">' +
+                  '<option value="center">Center</option>' +
+                  '<option value="left">Left</option>' +
+                  '<option value="right">Right</option>' +
+                '</select>' +
+              '</div>' +
+            '</div>' +
+            '<div class="engraving-preview" id="opt-eng-preview">' +
+              '<div class="engraving-preview__line engraving-preview__line--empty" id="opt-prev-top">&nbsp;</div>' +
+              '<div class="engraving-preview__line engraving-preview__line--empty" id="opt-prev-mid">&nbsp;</div>' +
+              '<div class="engraving-preview__line engraving-preview__line--empty" id="opt-prev-bot">&nbsp;</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
+        '<div class="board-options-modal__actions">' +
+          '<button type="button" class="btn btn--outline" id="opt-cancel">Cancel</button>' +
+          '<button type="button" class="btn btn--accent" id="opt-add-cart">Add to Cart</button>' +
+        '</div>' +
+      '</div>';
+
+    modal.innerHTML = dialogHtml;
+    document.body.appendChild(modal);
+    document.body.style.overflow = 'hidden';
+
+    var dialog = modal.querySelector('.board-options-modal__dialog');
+    var backdrop = modal.querySelector('.board-options-modal__backdrop');
+    var closeBtn = modal.querySelector('.board-options-modal__close');
+    var cancelBtn = document.getElementById('opt-cancel');
+    var addCartBtn = document.getElementById('opt-add-cart');
+    var livePrice = document.getElementById('opt-live-price');
+
+    // Engraving toggle
+    var engFields = document.getElementById('opt-eng-fields');
+    var engRadios = modal.querySelectorAll('input[name="engraving"]');
+    engRadios.forEach(function (r) {
+      r.addEventListener('change', function () {
+        if (r.value === 'yes') {
+          engFields.classList.add('board-engraving-fields--visible');
+        } else {
+          engFields.classList.remove('board-engraving-fields--visible');
+        }
+        updateLivePrice();
+      });
+    });
+
+    // Engraving preview updates
+    var engTopInput = document.getElementById('opt-eng-top');
+    var engMidInput = document.getElementById('opt-eng-mid');
+    var engBotInput = document.getElementById('opt-eng-bot');
+    var engTopAlign = document.getElementById('opt-eng-top-align');
+    var engMidAlign = document.getElementById('opt-eng-mid-align');
+    var engBotAlign = document.getElementById('opt-eng-bot-align');
+    var engFontSelect = document.getElementById('opt-eng-font');
+    var prevTop = document.getElementById('opt-prev-top');
+    var prevMid = document.getElementById('opt-prev-mid');
+    var prevBot = document.getElementById('opt-prev-bot');
+    var engPreview = document.getElementById('opt-eng-preview');
+
+    var FONT_MAP = {
+      'serif': 'Georgia, "Times New Roman", serif',
+      'sans-serif': '"Inter", Arial, sans-serif',
+      'script': '"Brush Script MT", "Segoe Script", cursive',
+      'monospace': '"Courier New", Courier, monospace'
+    };
+
+    function updatePreview() {
+      updatePreviewLine(prevTop, engTopInput.value, engTopAlign.value);
+      updatePreviewLine(prevMid, engMidInput.value, engMidAlign.value);
+      updatePreviewLine(prevBot, engBotInput.value, engBotAlign.value);
+      engPreview.style.fontFamily = FONT_MAP[engFontSelect.value] || '';
+    }
+
+    function updatePreviewLine(el, text, align) {
+      var t = text.trim();
+      if (t) {
+        el.textContent = t;
+        el.classList.remove('engraving-preview__line--empty');
+      } else {
+        el.innerHTML = '&nbsp;';
+        el.classList.add('engraving-preview__line--empty');
+      }
+      el.style.textAlign = align;
+    }
+
+    [engTopInput, engMidInput, engBotInput].forEach(function (inp) {
+      inp.addEventListener('input', updatePreview);
+    });
+    [engTopAlign, engMidAlign, engBotAlign, engFontSelect].forEach(function (sel) {
+      sel.addEventListener('change', updatePreview);
+    });
+
+    // Live price calculation
+    function calcTotalPrice() {
+      var total = basePrice;
+      var handles = modal.querySelector('input[name="handles"]:checked');
+      if (handles && handles.value === 'yes') total += HANDLE_PRICE;
+      var feet = modal.querySelector('input[name="feet"]:checked');
+      if (feet) {
+        if (feet.value === 'basic') total += BASIC_FEET_PRICE;
+        if (feet.value === 'brass') total += BRASS_FEET_PRICE;
+      }
+      var eng = modal.querySelector('input[name="engraving"]:checked');
+      if (eng && eng.value === 'yes') total += ENGRAVING_PRICE_OPT;
+      return total;
+    }
+
+    function updateLivePrice() {
+      livePrice.textContent = formatPrice(calcTotalPrice());
+    }
+
+    // Attach price update to all radios
+    modal.querySelectorAll('input[type="radio"]').forEach(function (r) {
+      r.addEventListener('change', updateLivePrice);
+    });
+
+    // Cleanup
+    function cleanup() {
+      modal.remove();
+      document.body.style.overflow = '';
+    }
+
+    // Close actions
+    backdrop.addEventListener('click', cleanup);
+    closeBtn.addEventListener('click', cleanup);
+    cancelBtn.addEventListener('click', cleanup);
+    modal.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') cleanup();
+    });
+
+    // Add to cart
+    addCartBtn.addEventListener('click', function () {
+      var mainWood = document.getElementById('opt-mainWood').value;
+      var stripeWood = document.getElementById('opt-stripeWood').value;
+      var accentWood = document.getElementById('opt-accentWood').value;
+
+      if (!mainWood || !stripeWood || !accentWood) {
+        showToast('Please select all wood types');
+        return;
+      }
+
+      var handlesVal = modal.querySelector('input[name="handles"]:checked').value;
+      var feetVal = modal.querySelector('input[name="feet"]:checked').value;
+      var engVal = modal.querySelector('input[name="engraving"]:checked').value;
+
+      var options = {
+        mainWood: mainWood,
+        stripeWood: stripeWood,
+        accentWood: accentWood,
+        handles: handlesVal === 'yes',
+        feet: feetVal === 'none' ? null : (feetVal === 'basic' ? 'Basic' : 'Brass'),
+        engravingLines: null
+      };
+
+      if (engVal === 'yes') {
+        var topText = engTopInput.value.trim();
+        var midText = engMidInput.value.trim();
+        var botText = engBotInput.value.trim();
+        if (!topText && !midText && !botText) {
+          showToast('Please enter at least one engraving line');
+          return;
+        }
+        options.engravingLines = {
+          top: topText || '',
+          topAlign: engTopAlign.value,
+          middle: midText || '',
+          middleAlign: engMidAlign.value,
+          bottom: botText || '',
+          bottomAlign: engBotAlign.value,
+          font: engFontSelect.value
+        };
+      }
+
+      var finalPrice = calcTotalPrice();
+      callback(options, finalPrice);
+      cleanup();
+    });
+
+    // Focus the dialog
+    closeBtn.focus();
+  }
+
+  // ---- Board Options Click Handler ----
+
+  function initBoardOptions() {
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.product-card__options-btn');
+      if (!btn) return;
+
+      var card = btn.closest('.product-card');
+      if (!card) return;
+
+      var id = card.getAttribute('data-product-id');
+      var name = card.getAttribute('data-product-name');
+      var price = parseInt(card.getAttribute('data-product-price'), 10);
+      var qtyInput = card.querySelector('.product-card__qty');
+      var qty = qtyInput ? parseInt(qtyInput.value, 10) : 1;
+      if (isNaN(qty) || qty < 1) qty = 1;
+      if (isNaN(price)) return;
+
+      showBoardOptionsModal(name, price, qty, id, function (options, finalPrice) {
+        addToCart(id, name, finalPrice, qty, undefined, options);
+        updateCartBadge();
+        showToast(qty + 'x ' + name + ' added to cart');
+      });
+    });
+  }
+
+  // ---- Scroll Reveal (Intersection Observer) ----
+
+  function initScrollReveal() {
+    var reveals = document.querySelectorAll('.reveal');
+    if (!reveals.length) return;
+
+    if (!('IntersectionObserver' in window)) {
+      // Fallback: just show everything
+      for (var i = 0; i < reveals.length; i++) {
+        reveals[i].classList.add('reveal--visible');
+      }
+      return;
+    }
+
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('reveal--visible');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, {
+      threshold: 0.1,
+      rootMargin: '0px 0px -50px 0px'
+    });
+
+    reveals.forEach(function (el) {
+      observer.observe(el);
+    });
+  }
 
 })();
