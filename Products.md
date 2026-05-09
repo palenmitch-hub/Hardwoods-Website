@@ -12,3 +12,8 @@ Description: This eye catching design uses smaller pieces that create an effect 
 Price: $100-$150
 Images: bas-spor1, bas-spor2, bas-spor2eng, bas-spor3, bas-spor3eng
 
+
+Pattern Boards:
+1. 
+
+
