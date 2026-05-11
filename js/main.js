@@ -2041,7 +2041,7 @@
         var accent2Sel = document.getElementById('opt-stripeAccent2');
         var mainStripeColor = mainStripeSel ? getWoodColor(mainStripeSel.value) : DEFAULT_WOOD;
         var accent1Color = accent1Sel ? getWoodColor(accent1Sel.value) : DEFAULT_WOOD;
-        var accent2Color = accent2Sel && accent2Sel.value ? getWoodColor(accent2Sel.value) : mainStripeColor;
+        var accent2Color = accent2Sel ? getWoodColor(accent2Sel.value) : DEFAULT_WOOD;
 
         // Layout: outer stripe (main) | gap | accent2 | accent1 | center stripe (2x) | accent1 | accent2 | gap | outer stripe (main)
         var thinH = 8;
