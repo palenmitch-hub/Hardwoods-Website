@@ -532,6 +532,8 @@ p {
   overflow: hidden;
   border: 1px solid var(--color-border);
   transition: border-color var(--transition-normal), transform var(--transition-normal);
+  display: flex;
+  flex-direction: column;
 }
 
 .product-card:hover {
@@ -600,6 +602,9 @@ p {
 
 .product-card__info {
   padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 }
 
 .product-card__name {
@@ -634,6 +639,7 @@ p {
   display: flex;
   align-items: center;
   gap: var(--space-xs);
+  margin-top: auto;
 }
 
 .product-card__qty {
@@ -774,6 +780,48 @@ p {
 .cart-item__detail {
   font-size: var(--font-size-small);
   color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.cart-item__qty-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+}
+
+.cart-item__qty-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-subtle);
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 700;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+  padding: 0;
+}
+
+.cart-item__qty-btn:hover {
+  background: var(--color-bg-elevated);
+  color: var(--color-white);
+}
+
+.cart-item__qty-value {
+  min-width: 28px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.8125rem;
+  color: var(--color-white);
+  padding: 0 2px;
 }
 
 .cart-item__remove {

@@ -156,7 +156,14 @@
             '<p class="cart-item__name">' + escapeHtml(item.name) + '</p>' +
             engravingLine +
             optionsHtml +
-            '<p class="cart-item__detail">Qty: ' + item.qty + ' &times; ' + formatPrice(item.price) + '</p>' +
+            '<p class="cart-item__detail">' +
+              '<span class="cart-item__qty-controls">' +
+                '<button type="button" class="cart-item__qty-btn cart-item__qty-minus" data-qty-id="' + encodeURIComponent(item.id) + '" aria-label="Decrease quantity">&minus;</button>' +
+                '<span class="cart-item__qty-value">' + item.qty + '</span>' +
+                '<button type="button" class="cart-item__qty-btn cart-item__qty-plus" data-qty-id="' + encodeURIComponent(item.id) + '" aria-label="Increase quantity">&plus;</button>' +
+              '</span>' +
+              ' &times; ' + formatPrice(item.price) +
+            '</p>' +
           '</div>' +
           '<button class="cart-item__remove" data-remove-id="' + encodeURIComponent(item.id) + '" aria-label="Remove ' + escapeHtml(item.name) + ' from cart" type="button">&times;</button>' +
         '</div>';
@@ -344,6 +351,12 @@
           addToCart(id, finalName, finalPrice, qty, engravingText || undefined);
           updateCartBadge();
           showToast(qty + 'x ' + finalName + ' added to cart');
+        });
+      } else if (id && id.indexOf('chair-') === 0) {
+        showChairWoodModal(name, price, qty, id, function (options, finalPrice) {
+          addToCart(id, name, finalPrice, qty, undefined, options);
+          updateCartBadge();
+          showToast(qty + 'x ' + name + ' added to cart');
         });
       } else {
         addToCart(id, name, price, qty);
@@ -841,7 +854,128 @@
       });
   }
 
+  // ---- Chair Wood Type Modal ----
+
+  function showChairWoodModal(productName, basePrice, qty, productId, callback) {
+    var old = document.getElementById('chair-wood-modal');
+    if (old) old.remove();
+
+    var modal = document.createElement('div');
+    modal.id = 'chair-wood-modal';
+    modal.className = 'board-options-modal';
+
+    var dialogHtml =
+      '<div class="board-options-modal__backdrop"></div>' +
+      '<div class="board-options-modal__dialog" role="dialog" aria-labelledby="chair-opt-title" aria-modal="true">' +
+        '<button type="button" class="board-options-modal__close" aria-label="Close">&times;</button>' +
+        '<h3 id="chair-opt-title">' + escapeHtml(productName) + '</h3>' +
+        '<p class="board-options-modal__subtitle">Choose your wood type</p>' +
+        '<span class="board-options-modal__price" id="chair-opt-price">' + formatPrice(basePrice) + '</span>' +
+        '<div class="board-opt-group">' +
+          '<label class="board-opt-group__label" for="chair-wood-select">Wood Type</label>' +
+          '<select id="chair-wood-select">' +
+            '<option value="">— Select —</option>' +
+            '<option value="Cedar">Cedar</option>' +
+            '<option value="Cypress">Cypress</option>' +
+            '<option value="Two Tone (Cypress and African Mahogany)">Two Tone (Cypress and African Mahogany)</option>' +
+          '</select>' +
+        '</div>' +
+        '<div class="board-options-modal__actions">' +
+          '<button type="button" class="btn btn--outline" id="chair-opt-cancel">Cancel</button>' +
+          '<button type="button" class="btn btn--accent" id="chair-opt-add">Add to Cart</button>' +
+        '</div>' +
+      '</div>';
+
+    modal.innerHTML = dialogHtml;
+    document.body.appendChild(modal);
+    document.body.style.overflow = 'hidden';
+
+    var backdrop = modal.querySelector('.board-options-modal__backdrop');
+    var closeBtn = modal.querySelector('.board-options-modal__close');
+    var cancelBtn = document.getElementById('chair-opt-cancel');
+    var addBtn = document.getElementById('chair-opt-add');
+    var woodSelect = document.getElementById('chair-wood-select');
+
+    function cleanup() {
+      modal.remove();
+      document.body.style.overflow = '';
+    }
+
+    backdrop.addEventListener('click', cleanup);
+    closeBtn.addEventListener('click', cleanup);
+    cancelBtn.addEventListener('click', cleanup);
+    modal.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') cleanup();
+    });
+
+    // Clear error on change
+    woodSelect.addEventListener('change', function () {
+      woodSelect.classList.remove('board-opt-error');
+    });
+
+    addBtn.addEventListener('click', function () {
+      var wood = woodSelect.value;
+      if (!wood) {
+        woodSelect.classList.add('board-opt-error');
+        showToast('Please select a wood type');
+        return;
+      }
+      var options = { woodType: wood };
+      callback(options, basePrice);
+      cleanup();
+    });
+
+    closeBtn.focus();
+  }
+
   // ---- Product Image Carousel ----
+
+  // ---- Chairs.md Data-Driven Rendering ----
+
+  function parseChairsMd(text) {
+    var chairs = [];
+    var current = null;
+    var lines = text.split('\n');
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      var numMatch = line.match(/^\d+\.\s*Name\/Style:\s*(.+)/);
+      if (numMatch) {
+        current = { name: numMatch[1].trim(), description: '', price: '', images: [] };
+        chairs.push(current);
+        continue;
+      }
+      if (!current) continue;
+      var descMatch = line.match(/^Description:\s*(.+)/);
+      if (descMatch) { current.description = descMatch[1].trim(); continue; }
+      var priceMatch = line.match(/^Price:\s*(.+)/);
+      if (priceMatch) { current.price = '$' + priceMatch[1].trim(); continue; }
+      var imgMatch = line.match(/^Images:\s*(.+)/);
+      if (imgMatch) {
+        current.images = imgMatch[1].split(',').map(function (s) { return s.trim(); });
+        continue;
+      }
+    }
+    return chairs;
+  }
+
+  function loadChairsFromMd() {
+    var grid = document.getElementById('chairs-grid');
+    if (!grid) return;
+    fetch('Chairs.md')
+      .then(function (res) { return res.text(); })
+      .then(function (text) {
+        var chairs = parseChairsMd(text);
+        var html = '';
+        for (var i = 0; i < chairs.length; i++) {
+          var id = 'chair-' + chairs[i].name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + (i + 1);
+          html += buildProductCardHTML(chairs[i], id, false);
+        }
+        grid.innerHTML = html;
+      })
+      .catch(function (err) {
+        console.error('Failed to load Chairs.md:', err);
+      });
+  }
 
   function initProductCarousels() {
     document.addEventListener('click', function (e) {
@@ -922,6 +1056,29 @@
       }
     });
 
+    // Cart qty +/- buttons (delegated)
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.cart-item__qty-btn');
+      if (!btn) return;
+      var id = decodeURIComponent(btn.getAttribute('data-qty-id'));
+      if (!id) return;
+      var cart = getCart();
+      var item = null;
+      for (var i = 0; i < cart.length; i++) {
+        if (cart[i].id === id) { item = cart[i]; break; }
+      }
+      if (!item) return;
+      var newQty = item.qty;
+      if (btn.classList.contains('cart-item__qty-plus')) {
+        newQty++;
+      } else if (btn.classList.contains('cart-item__qty-minus')) {
+        newQty--;
+      }
+      updateQty(id, newQty);
+      updateCartBadge();
+      renderCartPanel();
+    });
+
     // Quote request button
     var quoteBtn = document.querySelector('.cart-panel__quote-btn');
     if (quoteBtn) {
@@ -957,6 +1114,9 @@
 
     // Load products from Products.md
     loadProductsFromMd();
+
+    // Load chairs from Chairs.md
+    loadChairsFromMd();
 
     // Load wood inventory
     loadWoodInventory();
