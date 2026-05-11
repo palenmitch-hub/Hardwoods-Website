@@ -988,16 +988,27 @@
 
   // ---- Board Options Modal ----
 
+  var STANDARD_WOODS = ['Walnut', 'Maple', 'Cherry'];
+
   function buildWoodSelect(name, labelText) {
     var html = '<div class="board-opt-group">' +
       '<label class="board-opt-group__label" for="opt-' + name + '">' + escapeHtml(labelText) + '</label>' +
       '<select id="opt-' + name + '" name="' + name + '">' +
-      '<option value="">— Select —</option>';
+      '<option value="">— Select —</option>' +
+      '<option value="None">None</option>' +
+      '<option value="Creators Choice">Creators Choice</option>';
     for (var i = 0; i < woodList.length; i++) {
       html += '<option value="' + escapeHtml(woodList[i]) + '">' + escapeHtml(woodList[i]) + '</option>';
     }
     html += '</select></div>';
     return html;
+  }
+
+  function buildInfoBubble(text) {
+    return '<button type="button" class="info-bubble" aria-label="More info" title="' + escapeHtml(text) + '">' +
+      '<svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><circle cx="10" cy="10" r="9" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="10" y="14.5" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">i</text></svg>' +
+      '<span class="info-bubble__tooltip">' + escapeHtml(text) + '</span>' +
+    '</button>';
   }
 
   function showBoardOptionsModal(productName, basePrice, qty, productId, callback) {
@@ -1008,6 +1019,72 @@
     var BASIC_FEET_PRICE = 500;
     var BRASS_FEET_PRICE = 2000;
     var ENGRAVING_PRICE_OPT = 2000;
+    var ACCENT_WOOD_PRICE = 2000;
+    var SET_PRICE = 5000;
+    var EXOTIC_WOOD_PRICE = 5000;
+
+    var HANDLES_INFO = 'These are cutout from the bottom of the board to make it easier to pick up, these are NOT physical handles that are attached or added on.';
+    var FEET_INFO = 'Basic feet are just small black ruberized feet and the Brass Feet are actual metal (brass) feet with a rubber O ring inlayed that adds another level of beauty and function.';
+    var ENGRAVING_INFO = 'Choose your font, type out your message, and choose where on the board you would like it! Feel free to use multiple levels and alignments to make it your own!';
+    var SET_INFO = 'Choose this option to add a second matching board, this will be smaller and thinner with no juice groove, perfect to pull out for smaller or quick tasks!';
+
+    // Detect board type
+    var boardType = 'default';
+    var lowerName = productName.toLowerCase();
+    if (lowerName.indexOf('1 stripe') !== -1) boardType = '1stripe';
+    else if (lowerName.indexOf('multi stripe') !== -1) boardType = 'multistripe';
+    else if (lowerName.indexOf('sporatic') !== -1 || lowerName.indexOf('sporadic') !== -1) boardType = 'sporadic';
+
+    // Build wood selects based on board type
+    var woodSelectsHtml = '';
+    if (boardType === 'multistripe') {
+      woodSelectsHtml = buildWoodSelect('mainWood', 'Main Wood') +
+        buildWoodSelect('mainStripe', 'Main Stripe') +
+        buildWoodSelect('stripeAccent1', 'Stripe Accent 1') +
+        buildWoodSelect('stripeAccent2', 'Stripe Accent 2');
+    } else if (boardType === 'sporadic') {
+      woodSelectsHtml = buildWoodSelect('mainWood', 'Main Wood') +
+        '<div class="board-opt-group">' +
+          '<span class="board-opt-group__label">Add Another Wood</span>' +
+          '<div class="board-opt-radios">' +
+            '<div class="board-opt-radio">' +
+              '<input type="radio" id="opt-another-wood-no" name="anotherWood" value="no" checked>' +
+              '<label for="opt-another-wood-no">No</label>' +
+            '</div>' +
+            '<div class="board-opt-radio">' +
+              '<input type="radio" id="opt-another-wood-yes" name="anotherWood" value="yes">' +
+              '<label for="opt-another-wood-yes">Yes<span class="opt-price">+$20</span></label>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="board-accent-wood-field" id="opt-accent-wood-field">' +
+          buildWoodSelect('accentWood', 'Accent Wood') +
+        '</div>';
+    } else {
+      // 1stripe and default
+      woodSelectsHtml = buildWoodSelect('mainWood', 'Main Wood') +
+        buildWoodSelect('stripeWood', 'Stripe Wood') +
+        buildWoodSelect('accentWood', 'Stripe Accent Wood');
+    }
+
+    // Make it a Set option for basic boards
+    var makeSetHtml = '';
+    if (boardType === '1stripe' || boardType === 'multistripe' || boardType === 'sporadic') {
+      makeSetHtml =
+        '<div class="board-opt-group">' +
+          '<span class="board-opt-group__label">Make it a Set ' + buildInfoBubble(SET_INFO) + '</span>' +
+          '<div class="board-opt-radios">' +
+            '<div class="board-opt-radio">' +
+              '<input type="radio" id="opt-set-no" name="makeSet" value="no" checked>' +
+              '<label for="opt-set-no">No</label>' +
+            '</div>' +
+            '<div class="board-opt-radio">' +
+              '<input type="radio" id="opt-set-yes" name="makeSet" value="yes">' +
+              '<label for="opt-set-yes">Yes<span class="opt-price">+$50</span></label>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+    }
 
     var modal = document.createElement('div');
     modal.id = 'board-options-modal';
@@ -1021,13 +1098,26 @@
         '<p class="board-options-modal__subtitle">Customize your board</p>' +
         '<span class="board-options-modal__price" id="opt-live-price">' + formatPrice(basePrice) + '</span>' +
 
-        buildWoodSelect('mainWood', 'Main Wood') +
-        buildWoodSelect('stripeWood', 'Stripe Wood') +
-        buildWoodSelect('accentWood', 'Stripe Accent Wood') +
+        woodSelectsHtml +
+
+        // Juice Groove
+        '<div class="board-opt-group">' +
+          '<span class="board-opt-group__label">Juice Groove</span>' +
+          '<div class="board-opt-radios">' +
+            '<div class="board-opt-radio">' +
+              '<input type="radio" id="opt-juice-no" name="juiceGroove" value="no" checked>' +
+              '<label for="opt-juice-no">No</label>' +
+            '</div>' +
+            '<div class="board-opt-radio">' +
+              '<input type="radio" id="opt-juice-yes" name="juiceGroove" value="yes">' +
+              '<label for="opt-juice-yes">Yes<span class="opt-price">+$10</span></label>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
 
         // Handles
         '<div class="board-opt-group">' +
-          '<span class="board-opt-group__label">Handles</span>' +
+          '<span class="board-opt-group__label">Handles ' + buildInfoBubble(HANDLES_INFO) + '</span>' +
           '<div class="board-opt-radios">' +
             '<div class="board-opt-radio">' +
               '<input type="radio" id="opt-handles-no" name="handles" value="no" checked>' +
@@ -1042,7 +1132,7 @@
 
         // Feet
         '<div class="board-opt-group">' +
-          '<span class="board-opt-group__label">Feet</span>' +
+          '<span class="board-opt-group__label">Feet ' + buildInfoBubble(FEET_INFO) + '</span>' +
           '<div class="board-opt-radios">' +
             '<div class="board-opt-radio">' +
               '<input type="radio" id="opt-feet-none" name="feet" value="none" checked>' +
@@ -1062,7 +1152,7 @@
         // Engraving
         '<div class="board-engraving-section">' +
           '<div class="board-opt-group">' +
-            '<span class="board-opt-group__label">Custom Engraving</span>' +
+            '<span class="board-opt-group__label">Custom Engraving ' + buildInfoBubble(ENGRAVING_INFO) + '</span>' +
             '<div class="board-opt-radios">' +
               '<div class="board-opt-radio">' +
                 '<input type="radio" id="opt-eng-no" name="engraving" value="no" checked>' +
@@ -1075,6 +1165,19 @@
             '</div>' +
           '</div>' +
           '<div class="board-engraving-fields" id="opt-eng-fields">' +
+            '<div class="board-opt-group">' +
+              '<span class="board-opt-group__label">Engraving Placement</span>' +
+              '<div class="board-opt-radios">' +
+                '<div class="board-opt-radio">' +
+                  '<input type="radio" id="opt-eng-front" name="engPlacement" value="front">' +
+                  '<label for="opt-eng-front">Front of Board</label>' +
+                '</div>' +
+                '<div class="board-opt-radio">' +
+                  '<input type="radio" id="opt-eng-back" name="engPlacement" value="back">' +
+                  '<label for="opt-eng-back">Back of Board</label>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
             '<div class="board-opt-group">' +
               '<label class="board-opt-group__label" for="opt-eng-font">Font</label>' +
               '<select id="opt-eng-font" class="board-opt-group__select">' +
@@ -1134,6 +1237,8 @@
           '</div>' +
         '</div>' +
 
+        makeSetHtml +
+
         '<div class="board-options-modal__actions">' +
           '<button type="button" class="btn btn--outline" id="opt-cancel">Cancel</button>' +
           '<button type="button" class="btn btn--accent" id="opt-add-cart">Add to Cart</button>' +
@@ -1150,6 +1255,22 @@
     var cancelBtn = document.getElementById('opt-cancel');
     var addCartBtn = document.getElementById('opt-add-cart');
     var livePrice = document.getElementById('opt-live-price');
+
+    // "Add Another Wood" toggle for sporadic boards
+    if (boardType === 'sporadic') {
+      var accentField = document.getElementById('opt-accent-wood-field');
+      var anotherWoodRadios = modal.querySelectorAll('input[name="anotherWood"]');
+      anotherWoodRadios.forEach(function (r) {
+        r.addEventListener('change', function () {
+          if (r.value === 'yes') {
+            accentField.classList.add('board-accent-wood-field--visible');
+          } else {
+            accentField.classList.remove('board-accent-wood-field--visible');
+          }
+          updateLivePrice();
+        });
+      });
+    }
 
     // Engraving toggle
     var engFields = document.getElementById('opt-eng-fields');
@@ -1212,8 +1333,16 @@
     });
 
     // Live price calculation
+    function isExoticWood(val) {
+      if (!val || val === 'None' || val === 'Creators Choice') return false;
+      return STANDARD_WOODS.indexOf(val) === -1;
+    }
+
     function calcTotalPrice() {
       var total = basePrice;
+      // Exotic main wood surcharge
+      var mainWoodSel = document.getElementById('opt-mainWood');
+      if (mainWoodSel && isExoticWood(mainWoodSel.value)) total += EXOTIC_WOOD_PRICE;
       var handles = modal.querySelector('input[name="handles"]:checked');
       if (handles && handles.value === 'yes') total += HANDLE_PRICE;
       var feet = modal.querySelector('input[name="feet"]:checked');
@@ -1223,6 +1352,12 @@
       }
       var eng = modal.querySelector('input[name="engraving"]:checked');
       if (eng && eng.value === 'yes') total += ENGRAVING_PRICE_OPT;
+      var anotherWood = modal.querySelector('input[name="anotherWood"]:checked');
+      if (anotherWood && anotherWood.value === 'yes') total += ACCENT_WOOD_PRICE;
+      var juiceGroove = modal.querySelector('input[name="juiceGroove"]:checked');
+      if (juiceGroove && juiceGroove.value === 'yes') total += 1000;
+      var makeSet = modal.querySelector('input[name="makeSet"]:checked');
+      if (makeSet && makeSet.value === 'yes') total += SET_PRICE;
       return total;
     }
 
@@ -1230,9 +1365,12 @@
       livePrice.textContent = formatPrice(calcTotalPrice());
     }
 
-    // Attach price update to all radios
+    // Attach price update to all radios and selects
     modal.querySelectorAll('input[type="radio"]').forEach(function (r) {
       r.addEventListener('change', updateLivePrice);
+    });
+    modal.querySelectorAll('select').forEach(function (s) {
+      s.addEventListener('change', updateLivePrice);
     });
 
     // Cleanup
@@ -1249,31 +1387,125 @@
       if (e.key === 'Escape') cleanup();
     });
 
+    // Validation helper — marks missing selects red
+    function markSelect(id, isError) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      if (isError) {
+        el.classList.add('board-opt-error');
+      } else {
+        el.classList.remove('board-opt-error');
+      }
+    }
+
+    function markRadioGroup(name, isError) {
+      var radios = modal.querySelectorAll('input[name="' + name + '"]');
+      radios.forEach(function (r) {
+        var lbl = r.nextElementSibling;
+        if (lbl) {
+          if (isError) lbl.classList.add('board-opt-error-radio');
+          else lbl.classList.remove('board-opt-error-radio');
+        }
+      });
+    }
+
+    function clearAllErrors() {
+      modal.querySelectorAll('.board-opt-error').forEach(function (el) {
+        el.classList.remove('board-opt-error');
+      });
+      modal.querySelectorAll('.board-opt-error-radio').forEach(function (el) {
+        el.classList.remove('board-opt-error-radio');
+      });
+    }
+
+    // Clear error on change
+    modal.querySelectorAll('select').forEach(function (sel) {
+      sel.addEventListener('change', function () {
+        sel.classList.remove('board-opt-error');
+      });
+    });
+    modal.querySelectorAll('input[type="radio"]').forEach(function (r) {
+      r.addEventListener('change', function () {
+        var lbl = r.closest('.board-opt-radios');
+        if (lbl) {
+          lbl.querySelectorAll('.board-opt-error-radio').forEach(function (el) {
+            el.classList.remove('board-opt-error-radio');
+          });
+        }
+      });
+    });
+
     // Add to cart
     addCartBtn.addEventListener('click', function () {
-      var mainWood = document.getElementById('opt-mainWood').value;
-      var stripeWood = document.getElementById('opt-stripeWood').value;
-      var accentWood = document.getElementById('opt-accentWood').value;
+      clearAllErrors();
+      var options = {};
+      var hasError = false;
 
-      if (!mainWood || !stripeWood || !accentWood) {
-        showToast('Please select all wood types');
-        return;
+      // Validate wood selections based on board type
+      if (boardType === 'multistripe') {
+        var mainWood = document.getElementById('opt-mainWood').value;
+        var mainStripe = document.getElementById('opt-mainStripe').value;
+        var stripeAccent1 = document.getElementById('opt-stripeAccent1').value;
+        var stripeAccent2 = document.getElementById('opt-stripeAccent2').value;
+        if (!mainWood) { markSelect('opt-mainWood', true); hasError = true; }
+        if (!mainStripe) { markSelect('opt-mainStripe', true); hasError = true; }
+        if (!stripeAccent1) { markSelect('opt-stripeAccent1', true); hasError = true; }
+        if (!stripeAccent2) { markSelect('opt-stripeAccent2', true); hasError = true; }
+        if (hasError) { showToast('Please fill in all highlighted fields'); return; }
+        options.mainWood = mainWood;
+        options.mainStripe = mainStripe;
+        options.stripeAccent1 = stripeAccent1;
+        options.stripeAccent2 = stripeAccent2;
+      } else if (boardType === 'sporadic') {
+        var mainWood = document.getElementById('opt-mainWood').value;
+        if (!mainWood) { markSelect('opt-mainWood', true); hasError = true; }
+        var anotherWoodVal = modal.querySelector('input[name="anotherWood"]:checked');
+        if (anotherWoodVal && anotherWoodVal.value === 'yes') {
+          var accentWood = document.getElementById('opt-accentWood').value;
+          if (!accentWood) { markSelect('opt-accentWood', true); hasError = true; }
+          else { options.accentWood = accentWood; }
+        }
+        if (hasError) { showToast('Please fill in all highlighted fields'); return; }
+        options.mainWood = mainWood;
+      } else {
+        // 1stripe / default
+        var mainWood = document.getElementById('opt-mainWood').value;
+        var stripeWood = document.getElementById('opt-stripeWood').value;
+        var accentWood = document.getElementById('opt-accentWood').value;
+        if (!mainWood) { markSelect('opt-mainWood', true); hasError = true; }
+        if (!stripeWood) { markSelect('opt-stripeWood', true); hasError = true; }
+        if (!accentWood) { markSelect('opt-accentWood', true); hasError = true; }
+        if (hasError) { showToast('Please fill in all highlighted fields'); return; }
+        options.mainWood = mainWood;
+        options.stripeWood = stripeWood;
+        options.accentWood = accentWood;
       }
 
       var handlesVal = modal.querySelector('input[name="handles"]:checked').value;
       var feetVal = modal.querySelector('input[name="feet"]:checked').value;
       var engVal = modal.querySelector('input[name="engraving"]:checked').value;
+      var juiceGrooveVal = modal.querySelector('input[name="juiceGroove"]:checked').value;
 
-      var options = {
-        mainWood: mainWood,
-        stripeWood: stripeWood,
-        accentWood: accentWood,
-        handles: handlesVal === 'yes',
-        feet: feetVal === 'none' ? null : (feetVal === 'basic' ? 'Basic' : 'Brass'),
-        engravingLines: null
-      };
+      options.handles = handlesVal === 'yes';
+      options.feet = feetVal === 'none' ? null : (feetVal === 'basic' ? 'Basic' : 'Brass');
+      options.juiceGroove = juiceGrooveVal === 'yes';
+      options.engravingLines = null;
+
+      // Make it a Set
+      var makeSetRadio = modal.querySelector('input[name="makeSet"]:checked');
+      if (makeSetRadio && makeSetRadio.value === 'yes') {
+        options.makeSet = true;
+      }
 
       if (engVal === 'yes') {
+        // Validate engraving placement
+        var engPlacement = modal.querySelector('input[name="engPlacement"]:checked');
+        if (!engPlacement) {
+          markRadioGroup('engPlacement', true);
+          showToast('Please select engraving placement (Front or Back)');
+          return;
+        }
+
         var topText = engTopInput.value.trim();
         var midText = engMidInput.value.trim();
         var botText = engBotInput.value.trim();
@@ -1282,6 +1514,7 @@
           return;
         }
         options.engravingLines = {
+          placement: engPlacement.value,
           top: topText || '',
           topAlign: engTopAlign.value,
           middle: midText || '',
