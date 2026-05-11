@@ -2043,10 +2043,11 @@
         var accent1Color = accent1Sel ? getWoodColor(accent1Sel.value) : DEFAULT_WOOD;
         var accent2Color = accent2Sel && accent2Sel.value ? getWoodColor(accent2Sel.value) : mainStripeColor;
 
-        // Layout: outer stripe | gap | accent1 | center stripe (2x) | accent1 | gap | outer stripe
+        // Layout: outer stripe (main) | gap | accent2 | accent1 | center stripe (2x) | accent1 | accent2 | gap | outer stripe (main)
         var thinH = 8;
         var thickH = thinH * 2;
         var accent1H = 6;
+        var accent2H = 6;
         var centerY = padding + boardH / 2;
 
         // Center main stripe
@@ -2056,16 +2057,22 @@
         svg += '<rect x="' + padding + '" y="' + (centerY - thickH / 2 - accent1H) + '" width="' + boardW + '" height="' + accent1H + '" fill="' + accent1Color.main + '"/>';
         svg += '<rect x="' + padding + '" y="' + (centerY + thickH / 2) + '" width="' + boardW + '" height="' + accent1H + '" fill="' + accent1Color.main + '"/>';
 
-        // Outer stripes evenly spaced between center group and board edge
+        // Accent 2 directly outside accent 1
+        var accent2TopY = centerY - thickH / 2 - accent1H - accent2H;
+        var accent2BotY = centerY + thickH / 2 + accent1H;
+        svg += '<rect x="' + padding + '" y="' + accent2TopY + '" width="' + boardW + '" height="' + accent2H + '" fill="' + accent2Color.main + '"/>';
+        svg += '<rect x="' + padding + '" y="' + accent2BotY + '" width="' + boardW + '" height="' + accent2H + '" fill="' + accent2Color.main + '"/>';
+
+        // Outer stripes evenly spaced between center group and board edge (main stripe color)
         var topEdge = padding;
         var botEdge = padding + boardH;
-        var centerGroupTop = centerY - thickH / 2 - accent1H;
-        var centerGroupBot = centerY + thickH / 2 + accent1H;
+        var centerGroupTop = accent2TopY;
+        var centerGroupBot = accent2BotY + accent2H;
         var outerTopY = topEdge + (centerGroupTop - topEdge - thinH) / 2;
         var outerBotY = centerGroupBot + (botEdge - centerGroupBot - thinH) / 2;
 
-        svg += '<rect x="' + padding + '" y="' + outerTopY + '" width="' + boardW + '" height="' + thinH + '" fill="' + accent2Color.main + '"/>';
-        svg += '<rect x="' + padding + '" y="' + outerBotY + '" width="' + boardW + '" height="' + thinH + '" fill="' + accent2Color.main + '"/>';
+        svg += '<rect x="' + padding + '" y="' + outerTopY + '" width="' + boardW + '" height="' + thinH + '" fill="' + mainStripeColor.main + '"/>';
+        svg += '<rect x="' + padding + '" y="' + outerBotY + '" width="' + boardW + '" height="' + thinH + '" fill="' + mainStripeColor.main + '"/>';
 
       } else if (boardType === 'sporadic') {
         var anotherWoodRadio = modal.querySelector('input[name="anotherWood"]:checked');
