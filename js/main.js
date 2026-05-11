@@ -854,6 +854,322 @@
       });
   }
 
+  // ---- BoardsInStock.md Data-Driven Rendering ----
+
+  function parseBoardsInStockMd(text) {
+    var boards = [];
+    var current = null;
+    var lines = text.split('\n');
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      var numMatch = line.match(/^\d+\.\s*Name:\s*(.+)/);
+      if (numMatch) {
+        current = { name: numMatch[1].trim(), description: '', price: '', images: [] };
+        boards.push(current);
+        continue;
+      }
+      if (!current) continue;
+      var priceMatch = line.match(/^Price:\s*(.+)/);
+      if (priceMatch) { current.price = priceMatch[1].trim(); continue; }
+      var imgMatch = line.match(/^Image:\s*(.+)/);
+      if (imgMatch) {
+        current.images = imgMatch[1].split(',').map(function (s) { return s.trim(); });
+        continue;
+      }
+    }
+    return boards;
+  }
+
+  function buildInStockCardHTML(product, id) {
+    var safe = escapeHtml;
+    var imgs = product.images;
+    var hasCarousel = imgs.length > 1;
+    var imageClass = 'product-card__image' + (hasCarousel ? ' product-carousel' : '');
+
+    var imagesHtml = '';
+    for (var i = 0; i < imgs.length; i++) {
+      var activeClass = i === 0 ? ' product-carousel__slide--active' : '';
+      var cssClass = hasCarousel ? 'product-carousel__slide' + activeClass : '';
+      imagesHtml += '<img class="' + cssClass + '" src="images/products/' + safe(imgs[i]) +
+        '.jpg" alt="' + safe(product.name) + ' - view ' + (i + 1) + '" loading="lazy">';
+    }
+    if (hasCarousel) {
+      imagesHtml += '<button type="button" class="product-carousel__prev" aria-label="Previous photo">&lsaquo;</button>';
+      imagesHtml += '<button type="button" class="product-carousel__next" aria-label="Next photo">&rsaquo;</button>';
+    }
+
+    return '<article class="product-card" data-product-id="' + safe(id) +
+      '" data-product-name="' + safe(product.name) +
+      '" data-product-price="' + priceToCents(product.price) + '" data-in-stock="true">' +
+      '<div class="' + imageClass + '">' + imagesHtml + '</div>' +
+      '<div class="product-card__info">' +
+      '<h3 class="product-card__name">' + safe(product.name) + '</h3>' +
+      (product.description ? '<p class="product-card__description">' + safe(product.description) + '</p>' : '') +
+      '<span class="product-card__price">' + safe(product.price) + '</span>' +
+      '<div class="product-card__actions">' +
+      '<label for="qty-' + safe(id) + '" class="sr-only">Quantity</label>' +
+      '<input type="number" id="qty-' + safe(id) + '" class="product-card__qty" value="1" min="1" step="1" aria-label="Quantity for ' + safe(product.name) + '">' +
+      '<button class="btn btn--outline product-card__instock-btn" type="button" aria-label="Options for ' + safe(product.name) + '">Add to Cart</button>' +
+      '</div></div></article>';
+  }
+
+  function loadBoardsInStock() {
+    var grid = document.getElementById('in-stock-grid');
+    if (!grid) return;
+    fetch('BoardsInStock.md')
+      .then(function (res) { return res.text(); })
+      .then(function (text) {
+        var boards = parseBoardsInStockMd(text);
+        var html = '';
+        for (var i = 0; i < boards.length; i++) {
+          var id = 'instock-' + (i + 1);
+          html += buildInStockCardHTML(boards[i], id);
+        }
+        grid.innerHTML = html;
+      })
+      .catch(function (err) {
+        console.error('Failed to load BoardsInStock.md:', err);
+      });
+  }
+
+  // ---- In-Stock Board Options Modal (Feet + Engraving only) ----
+
+  function showInStockOptionsModal(productName, basePrice, qty, productId, callback) {
+    var old = document.getElementById('instock-options-modal');
+    if (old) old.remove();
+
+    var BASIC_FEET_PRICE = 500;
+    var BRASS_FEET_PRICE = 2000;
+    var ENGRAVING_PRICE_OPT = 2000;
+
+    var FEET_INFO = 'Basic feet are just small black ruberized feet and the Brass Feet are actual metal (brass) feet with a rubber O ring inlayed that adds another level of beauty and function.';
+    var ENGRAVING_INFO = 'Choose your font, type out your message, and choose where on the board you would like it! Feel free to use multiple levels and alignments to make it your own!';
+
+    var modal = document.createElement('div');
+    modal.id = 'instock-options-modal';
+    modal.className = 'board-options-modal';
+
+    var dialogHtml =
+      '<div class="board-options-modal__backdrop"></div>' +
+      '<div class="board-options-modal__dialog" role="dialog" aria-labelledby="instock-opt-title" aria-modal="true">' +
+        '<button type="button" class="board-options-modal__close" aria-label="Close">&times;</button>' +
+        '<h3 id="instock-opt-title">' + escapeHtml(productName) + '</h3>' +
+        '<p class="board-options-modal__subtitle">Add options to your board</p>' +
+        '<span class="board-options-modal__price" id="instock-opt-price">' + formatPrice(basePrice) + '</span>' +
+
+        // Feet
+        '<div class="board-opt-group">' +
+          '<span class="board-opt-group__label">Feet ' + buildInfoBubble(FEET_INFO) + '</span>' +
+          '<div class="board-opt-radios">' +
+            '<div class="board-opt-radio">' +
+              '<input type="radio" id="instock-feet-none" name="instockFeet" value="none" checked>' +
+              '<label for="instock-feet-none">No Feet</label>' +
+            '</div>' +
+            '<div class="board-opt-radio">' +
+              '<input type="radio" id="instock-feet-basic" name="instockFeet" value="basic">' +
+              '<label for="instock-feet-basic">Basic Feet<span class="opt-price">+$5</span></label>' +
+            '</div>' +
+            '<div class="board-opt-radio">' +
+              '<input type="radio" id="instock-feet-brass" name="instockFeet" value="brass">' +
+              '<label for="instock-feet-brass">Brass Feet<span class="opt-price">+$20</span></label>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
+        // Engraving
+        '<div class="board-engraving-section">' +
+          '<div class="board-opt-group">' +
+            '<span class="board-opt-group__label">Custom Engraving ' + buildInfoBubble(ENGRAVING_INFO) + '</span>' +
+            '<div class="board-opt-radios">' +
+              '<div class="board-opt-radio">' +
+                '<input type="radio" id="instock-eng-no" name="instockEng" value="no" checked>' +
+                '<label for="instock-eng-no">No</label>' +
+              '</div>' +
+              '<div class="board-opt-radio">' +
+                '<input type="radio" id="instock-eng-yes" name="instockEng" value="yes">' +
+                '<label for="instock-eng-yes">Yes<span class="opt-price">+$20</span></label>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="board-engraving-fields" id="instock-eng-fields">' +
+            '<div class="board-opt-group">' +
+              '<span class="board-opt-group__label">Engraving Placement</span>' +
+              '<div class="board-opt-radios">' +
+                '<div class="board-opt-radio">' +
+                  '<input type="radio" id="instock-eng-front" name="instockEngPlacement" value="front">' +
+                  '<label for="instock-eng-front">Front of Board</label>' +
+                '</div>' +
+                '<div class="board-opt-radio">' +
+                  '<input type="radio" id="instock-eng-back" name="instockEngPlacement" value="back">' +
+                  '<label for="instock-eng-back">Back of Board</label>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+            '<div class="board-opt-group">' +
+              '<label class="board-opt-group__label" for="instock-eng-font">Font</label>' +
+              '<select id="instock-eng-font">' +
+                '<option value="serif">Serif (Classic)</option>' +
+                '<option value="sans-serif">Sans-Serif (Modern)</option>' +
+                '<option value="script">Script (Elegant)</option>' +
+                '<option value="monospace">Monospace (Clean)</option>' +
+              '</select>' +
+            '</div>' +
+            '<div class="engraving-row"><div>' +
+              '<label for="instock-eng-top">Top Line</label>' +
+              '<input type="text" id="instock-eng-top" maxlength="40" placeholder="e.g. The Johnson Family">' +
+            '</div><div>' +
+              '<label for="instock-eng-top-align">Align</label>' +
+              '<select id="instock-eng-top-align"><option value="center">Center</option><option value="left">Left</option><option value="right">Right</option></select>' +
+            '</div></div>' +
+            '<div class="engraving-row"><div>' +
+              '<label for="instock-eng-mid">Middle Line</label>' +
+              '<input type="text" id="instock-eng-mid" maxlength="40" placeholder="e.g. Est. 2024">' +
+            '</div><div>' +
+              '<label for="instock-eng-mid-align">Align</label>' +
+              '<select id="instock-eng-mid-align"><option value="center">Center</option><option value="left">Left</option><option value="right">Right</option></select>' +
+            '</div></div>' +
+            '<div class="engraving-row"><div>' +
+              '<label for="instock-eng-bot">Bottom Line</label>' +
+              '<input type="text" id="instock-eng-bot" maxlength="40" placeholder="e.g. Made with Love">' +
+            '</div><div>' +
+              '<label for="instock-eng-bot-align">Align</label>' +
+              '<select id="instock-eng-bot-align"><option value="center">Center</option><option value="left">Left</option><option value="right">Right</option></select>' +
+            '</div></div>' +
+          '</div>' +
+        '</div>' +
+
+        '<div class="board-options-modal__actions">' +
+          '<button type="button" class="btn btn--outline" id="instock-opt-cancel">Cancel</button>' +
+          '<button type="button" class="btn btn--accent" id="instock-opt-add">Add to Cart</button>' +
+        '</div>' +
+      '</div>';
+
+    modal.innerHTML = dialogHtml;
+    document.body.appendChild(modal);
+    document.body.style.overflow = 'hidden';
+
+    var backdrop = modal.querySelector('.board-options-modal__backdrop');
+    var closeBtn = modal.querySelector('.board-options-modal__close');
+    var cancelBtn = document.getElementById('instock-opt-cancel');
+    var addBtn = document.getElementById('instock-opt-add');
+    var livePrice = document.getElementById('instock-opt-price');
+
+    // Engraving toggle
+    var engFields = document.getElementById('instock-eng-fields');
+    var engRadios = modal.querySelectorAll('input[name="instockEng"]');
+    engRadios.forEach(function (r) {
+      r.addEventListener('change', function () {
+        if (r.value === 'yes') {
+          engFields.classList.add('board-engraving-fields--visible');
+        } else {
+          engFields.classList.remove('board-engraving-fields--visible');
+        }
+        updatePrice();
+      });
+    });
+
+    function calcPrice() {
+      var total = basePrice;
+      var feet = modal.querySelector('input[name="instockFeet"]:checked');
+      if (feet) {
+        if (feet.value === 'basic') total += BASIC_FEET_PRICE;
+        if (feet.value === 'brass') total += BRASS_FEET_PRICE;
+      }
+      var eng = modal.querySelector('input[name="instockEng"]:checked');
+      if (eng && eng.value === 'yes') total += ENGRAVING_PRICE_OPT;
+      return total;
+    }
+
+    function updatePrice() {
+      livePrice.textContent = formatPrice(calcPrice());
+    }
+
+    modal.querySelectorAll('input[type="radio"]').forEach(function (r) {
+      r.addEventListener('change', updatePrice);
+    });
+
+    function cleanup() {
+      modal.remove();
+      document.body.style.overflow = '';
+    }
+
+    backdrop.addEventListener('click', cleanup);
+    closeBtn.addEventListener('click', cleanup);
+    cancelBtn.addEventListener('click', cleanup);
+    modal.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') cleanup();
+    });
+
+    addBtn.addEventListener('click', function () {
+      var feetVal = modal.querySelector('input[name="instockFeet"]:checked').value;
+      var engVal = modal.querySelector('input[name="instockEng"]:checked').value;
+      var options = {
+        feet: feetVal === 'none' ? null : (feetVal === 'basic' ? 'Basic' : 'Brass'),
+        engravingLines: null
+      };
+
+      if (engVal === 'yes') {
+        var placement = modal.querySelector('input[name="instockEngPlacement"]:checked');
+        if (!placement) {
+          var placementLabels = modal.querySelectorAll('input[name="instockEngPlacement"]');
+          placementLabels.forEach(function (r) {
+            var lbl = r.nextElementSibling;
+            if (lbl) lbl.classList.add('board-opt-error-radio');
+          });
+          showToast('Please select engraving placement (Front or Back)');
+          return;
+        }
+        var topText = document.getElementById('instock-eng-top').value.trim();
+        var midText = document.getElementById('instock-eng-mid').value.trim();
+        var botText = document.getElementById('instock-eng-bot').value.trim();
+        if (!topText && !midText && !botText) {
+          showToast('Please enter at least one engraving line');
+          return;
+        }
+        options.engravingLines = {
+          placement: placement.value,
+          top: topText || '',
+          topAlign: document.getElementById('instock-eng-top-align').value,
+          middle: midText || '',
+          middleAlign: document.getElementById('instock-eng-mid-align').value,
+          bottom: botText || '',
+          bottomAlign: document.getElementById('instock-eng-bot-align').value,
+          font: document.getElementById('instock-eng-font').value
+        };
+      }
+
+      var finalPrice = calcPrice();
+      callback(options, finalPrice);
+      cleanup();
+    });
+
+    closeBtn.focus();
+  }
+
+  // ---- In-Stock Board Click Handler ----
+
+  function initInStockOptions() {
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.product-card__instock-btn');
+      if (!btn) return;
+      var card = btn.closest('.product-card');
+      if (!card) return;
+      var id = card.getAttribute('data-product-id');
+      var name = card.getAttribute('data-product-name');
+      var price = parseInt(card.getAttribute('data-product-price'), 10);
+      var qtyInput = card.querySelector('.product-card__qty');
+      var qty = qtyInput ? parseInt(qtyInput.value, 10) : 1;
+      if (isNaN(qty) || qty < 1) qty = 1;
+      if (isNaN(price)) return;
+
+      showInStockOptionsModal(name, price, qty, id, function (options, finalPrice) {
+        addToCart(id, name, finalPrice, qty, undefined, options);
+        updateCartBadge();
+        showToast(qty + 'x ' + name + ' added to cart');
+      });
+    });
+  }
+
   // ---- Chair Wood Type Modal ----
 
   function showChairWoodModal(productName, basePrice, qty, productId, callback) {
@@ -1115,6 +1431,9 @@
     // Load products from Products.md
     loadProductsFromMd();
 
+    // Load boards in stock from BoardsInStock.md
+    loadBoardsInStock();
+
     // Load chairs from Chairs.md
     loadChairsFromMd();
 
@@ -1123,6 +1442,12 @@
 
     // Board options modal handler
     initBoardOptions();
+
+    // In-stock board options handler
+    initInStockOptions();
+
+    // Gallery slideshow
+    initGallerySlideshow();
 
     // Scroll reveal animations (Rivian-style)
     initScrollReveal();
@@ -1717,6 +2042,110 @@
         updateCartBadge();
         showToast(qty + 'x ' + name + ' added to cart');
       });
+    });
+  }
+
+  // ---- Gallery Slideshow ----
+
+  function initGallerySlideshow() {
+    var container = document.getElementById('gallery-slideshow');
+    if (!container) return;
+
+    // Collect all .jpg images from across the site's image directories
+    var imageSources = [
+      { dir: 'images/gallery/', files: [
+        'Basic Cherry with Stripe.jpg',
+        'Basic Walnut with Stipe.jpg',
+        'Brick Pattern.jpg',
+        'Checkered Pattern.jpg',
+        'Intricate Large Weave.jpg',
+        'Intricate Tight Weave.jpg',
+        'Intricate Zigzag.jpg'
+      ]},
+      { dir: 'images/products/', files: [
+        'bas-1stripe1.jpg', 'bas-1stripe2.jpg', 'bas-1stripe3.jpg', 'bas-1stripe4.jpg',
+        'bas-multistripe1.jpg', 'bas-multistripe2.jpg',
+        'bas-spor1.jpg', 'bas-spor2.jpg', 'bas-spor2eng.jpg', 'bas-spor3.jpg', 'bas-spor3eng.jpg',
+        'bas-stripe3eng.jpg',
+        'cherry-wenge.jpg', 'walnut-wenge.jpg',
+        'easy-rider.jpg', 'easy-rider-grey.jpg', 'easy-rider-grey2.jpg',
+        'high-top.jpg',
+        'low-rider.jpg', 'low-rider-grey.jpg', 'low-rider-grey2.jpg',
+        'rocker-2tone.jpg', 'rocker-2tone2.jpg', 'rocker-grey.jpg', 'rocker-grey2.jpg'
+      ]},
+      { dir: 'images/hero/', files: [
+        '20250829_175953.jpg', '20260113_222804.jpg', '20260320_002415.jpg',
+        '20260320_155548.jpg', '20260320_155606.jpg', '20260331_003349.jpg', '20260501_221956.jpg'
+      ]}
+    ];
+
+    var allImages = [];
+    for (var s = 0; s < imageSources.length; s++) {
+      var src = imageSources[s];
+      for (var f = 0; f < src.files.length; f++) {
+        allImages.push(src.dir + src.files[f]);
+      }
+    }
+
+    if (!allImages.length) return;
+
+    var mainImg = document.getElementById('gallery-main-img');
+    var counter = document.getElementById('gallery-counter');
+    var thumbsContainer = document.getElementById('gallery-thumbs');
+    var prevBtn = container.querySelector('.gallery-slideshow__prev');
+    var nextBtn = container.querySelector('.gallery-slideshow__next');
+    var currentIdx = 0;
+
+    // Build thumbnails
+    var thumbsHtml = '';
+    for (var i = 0; i < allImages.length; i++) {
+      thumbsHtml += '<button type="button" class="gallery-slideshow__thumb' +
+        (i === 0 ? ' gallery-slideshow__thumb--active' : '') +
+        '" data-gallery-idx="' + i + '">' +
+        '<img src="' + allImages[i] + '" alt="Thumbnail ' + (i + 1) + '" loading="lazy">' +
+        '</button>';
+    }
+    thumbsContainer.innerHTML = thumbsHtml;
+
+    function showImage(idx) {
+      currentIdx = idx;
+      mainImg.src = allImages[idx];
+      mainImg.alt = 'Gallery image ' + (idx + 1) + ' of ' + allImages.length;
+      counter.textContent = (idx + 1) + ' / ' + allImages.length;
+
+      var thumbs = thumbsContainer.querySelectorAll('.gallery-slideshow__thumb');
+      thumbs.forEach(function (t) { t.classList.remove('gallery-slideshow__thumb--active'); });
+      if (thumbs[idx]) {
+        thumbs[idx].classList.add('gallery-slideshow__thumb--active');
+        thumbs[idx].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+    }
+
+    showImage(0);
+
+    prevBtn.addEventListener('click', function () {
+      showImage((currentIdx - 1 + allImages.length) % allImages.length);
+    });
+
+    nextBtn.addEventListener('click', function () {
+      showImage((currentIdx + 1) % allImages.length);
+    });
+
+    thumbsContainer.addEventListener('click', function (e) {
+      var thumb = e.target.closest('.gallery-slideshow__thumb');
+      if (!thumb) return;
+      var idx = parseInt(thumb.getAttribute('data-gallery-idx'), 10);
+      if (!isNaN(idx)) showImage(idx);
+    });
+
+    // Keyboard navigation
+    document.addEventListener('keydown', function (e) {
+      if (!container.closest('main')) return;
+      if (e.key === 'ArrowLeft') {
+        showImage((currentIdx - 1 + allImages.length) % allImages.length);
+      } else if (e.key === 'ArrowRight') {
+        showImage((currentIdx + 1) % allImages.length);
+      }
     });
   }
 

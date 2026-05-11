@@ -43,9 +43,19 @@
         <p>Handcrafted with care in Woodstock, GA</p>
       </div>
 
-      <!-- ==================== CUTTING BOARDS ==================== -->
+      <!-- ==================== AVAILABLE NOW ==================== -->
       <section class="catalog-section">
-        <h2>Cutting Boards</h2>
+        <h2>Available Now</h2>
+        <p class="catalog-section__subtitle">These boards are ready to ship — grab them before they're gone! Pictures are of the actual board you will receive! </p>
+        <div class="product-grid" id="in-stock-grid">
+          <!-- Populated dynamically from BoardsInStock.md -->
+        </div>
+      </section>
+
+      <!-- ==================== CREATE YOUR OWN BOARD ==================== -->
+      <section class="catalog-section">
+        <h2>Create Your Own Board</h2>
+        <p class="catalog-section__subtitle">Pick a style you like below and click the See All Options button to fully customize that style of board! Expect 1-3 week lead times for all custom ordered boards.</p>
 
         <!-- ---- Basic Boards (T018) ---- -->
         <section class="category-section">
@@ -107,117 +117,12 @@
             </article>
           </div>
         </section>
-
-        <!-- ---- Intricate Boards (T020) ---- -->
-        <section class="category-section">
-          <h3>Intricate Boards</h3>
-          <div class="product-grid">
-            <!-- ADD NEW INTRICATE BOARDS BELOW -->
-            <article class="product-card"
-                     data-product-id="cb-intricate-001"
-                     data-product-name="3D Tumbling Block Board"
-                     data-product-price="12500">
-              <div class="product-card__image">
-                <img src="images/products/cb-intricate-001.svg"
-                     alt="3D tumbling block pattern cutting board with maple, walnut, and cherry"
-                     loading="lazy" width="400" height="300">
-              </div>
-              <div class="product-card__info">
-                <h3 class="product-card__name">3D Tumbling Block Board</h3>
-                <p class="product-card__description">Stunning 3D optical illusion created with maple, walnut, and cherry. A true showpiece.</p>
-                <span class="product-card__price">$125.00</span>
-                <div class="product-card__actions">
-                  <label for="qty-cb-intricate-001" class="sr-only">Quantity</label>
-                  <input type="number" id="qty-cb-intricate-001" class="product-card__qty"
-                         value="1" min="1" step="1" aria-label="Quantity for 3D Tumbling Block Board">
-                  <button class="btn btn--accent product-card__add" type="button"
-                          aria-label="Add 3D Tumbling Block Board to cart">Add to Cart</button>
-                </div>
-              </div>
-            </article>
-
-            <article class="product-card"
-                     data-product-id="cb-intricate-002"
-                     data-product-name="Celtic Knot Board"
-                     data-product-price="15000">
-              <div class="product-card__image">
-                <img src="images/products/cb-intricate-002.svg"
-                     alt="Celtic knot design cutting board with padauk and maple inlay"
-                     loading="lazy" width="400" height="300">
-              </div>
-              <div class="product-card__info">
-                <h3 class="product-card__name">Celtic Knot Board</h3>
-                <p class="product-card__description">Intricate Celtic knot design with padauk and maple inlay. Each board is a unique work of art.</p>
-                <span class="product-card__price">$150.00</span>
-                <div class="product-card__actions">
-                  <label for="qty-cb-intricate-002" class="sr-only">Quantity</label>
-                  <input type="number" id="qty-cb-intricate-002" class="product-card__qty"
-                         value="1" min="1" step="1" aria-label="Quantity for Celtic Knot Board">
-                  <button class="btn btn--accent product-card__add" type="button"
-                          aria-label="Add Celtic Knot Board to cart">Add to Cart</button>
-                </div>
-              </div>
-            </article>
-          </div>
-        </section>
-
-        <!-- ---- Custom Boards (T021) ---- -->
-        <section class="category-section">
-          <h3>Custom Boards</h3>
-          <div class="product-grid">
-            <!-- ADD NEW CUSTOM BOARDS BELOW -->
-            <article class="product-card"
-                     data-product-id="cb-custom-001"
-                     data-product-name="Custom Engraved Maple Board"
-                     data-product-price="9500">
-              <div class="product-card__image">
-                <img src="images/products/cb-custom-001.svg"
-                     alt="Custom engraved maple cutting board with personalized text"
-                     loading="lazy" width="400" height="300">
-              </div>
-              <div class="product-card__info">
-                <h3 class="product-card__name">Custom Engraved Maple Board</h3>
-                <p class="product-card__description">Personalized maple board with custom engraving. Perfect for gifts, weddings, and special occasions.</p>
-                <span class="product-card__price">$95.00</span>
-                <div class="product-card__actions">
-                  <label for="qty-cb-custom-001" class="sr-only">Quantity</label>
-                  <input type="number" id="qty-cb-custom-001" class="product-card__qty"
-                         value="1" min="1" step="1" aria-label="Quantity for Custom Engraved Maple Board">
-                  <button class="btn btn--accent product-card__add" type="button"
-                          aria-label="Add Custom Engraved Maple Board to cart">Add to Cart</button>
-                </div>
-              </div>
-            </article>
-
-            <article class="product-card"
-                     data-product-id="cb-custom-002"
-                     data-product-name="Mixed Exotic Wood Board"
-                     data-product-price="11000">
-              <div class="product-card__image">
-                <img src="images/products/cb-custom-002.svg"
-                     alt="Custom cutting board with mixed exotic woods including padauk and purple heart"
-                     loading="lazy" width="400" height="300">
-              </div>
-              <div class="product-card__info">
-                <h3 class="product-card__name">Mixed Exotic Wood Board</h3>
-                <p class="product-card__description">A blend of exotic woods including padauk and purple heart. Bold colors and exceptional durability.</p>
-                <span class="product-card__price">$110.00</span>
-                <div class="product-card__actions">
-                  <label for="qty-cb-custom-002" class="sr-only">Quantity</label>
-                  <input type="number" id="qty-cb-custom-002" class="product-card__qty"
-                         value="1" min="1" step="1" aria-label="Quantity for Mixed Exotic Wood Board">
-                  <button class="btn btn--accent product-card__add" type="button"
-                          aria-label="Add Mixed Exotic Wood Board to cart">Add to Cart</button>
-                </div>
-              </div>
-            </article>
-          </div>
-        </section>
       </section>
 
       <!-- ==================== ADIRONDACK CHAIRS ==================== -->
       <section class="catalog-section">
         <h2>Adirondack Chairs</h2>
+        <p class="catalog-section__subtitle">All Adirondack chairs are built to order. Expect 4-8 week lead times for chair orders.</p>
         <div class="product-grid" id="chairs-grid">
           <!-- Populated dynamically from Chairs.md -->
         </div>
