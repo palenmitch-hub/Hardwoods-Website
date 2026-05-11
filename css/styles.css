@@ -1430,7 +1430,8 @@ p {
 /* Catalog section subtitle */
 .catalog-section__subtitle {
   color: var(--color-text-muted);
-  font-size: var(--font-size-small);
+  font-size: 1.1rem;
+  font-weight: 700;
   margin-bottom: var(--space-lg);
 }
 
