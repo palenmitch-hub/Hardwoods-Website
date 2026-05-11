@@ -37,25 +37,23 @@
   </header>
 
   <main id="main-content">
-    <div class="container">
-      <div class="page-header">
-        <h1>Project Gallery</h1>
-        <p>A look at some of my recent handcrafted pieces</p>
-      </div>
+    <section class="gallery-hero">
+      <h1>Project Gallery</h1>
+      <p>Drag or scroll to explore — hover to interact</p>
+    </section>
 
-      <section class="gallery-slideshow" id="gallery-slideshow">
-        <div class="gallery-slideshow__viewer">
-          <button type="button" class="gallery-slideshow__nav gallery-slideshow__prev" aria-label="Previous image">&lsaquo;</button>
-          <div class="gallery-slideshow__main">
-            <img id="gallery-main-img" src="" alt="Gallery image" loading="eager">
-            <p class="gallery-slideshow__counter" id="gallery-counter"></p>
-          </div>
-          <button type="button" class="gallery-slideshow__nav gallery-slideshow__next" aria-label="Next image">&rsaquo;</button>
-        </div>
-        <div class="gallery-slideshow__thumbs" id="gallery-thumbs">
-          <!-- Thumbnails populated by JS -->
-        </div>
-      </section>
+    <section class="gallery-scroll" id="gallery-scroll" aria-label="Photo gallery">
+      <div class="gallery-scroll__track" id="gallery-track">
+        <!-- Populated dynamically by JS -->
+      </div>
+    </section>
+
+    <!-- Lightbox -->
+    <div class="gallery-lightbox" id="gallery-lightbox" aria-hidden="true" role="dialog" aria-label="Image viewer">
+      <button type="button" class="gallery-lightbox__close" aria-label="Close">&times;</button>
+      <button type="button" class="gallery-lightbox__prev" aria-label="Previous image">&lsaquo;</button>
+      <img class="gallery-lightbox__img" id="lightbox-img" src="" alt="">
+      <button type="button" class="gallery-lightbox__next" aria-label="Next image">&rsaquo;</button>
     </div>
   </main>
 

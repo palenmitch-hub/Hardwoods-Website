@@ -89,6 +89,22 @@
 
   // ---- Cart UI (T012) ----
 
+  // Helper: total qty in cart for a base product id (sums across all option variants)
+  function getCartQtyForProduct(baseId) {
+    var cart = getCart();
+    var total = 0;
+    for (var i = 0; i < cart.length; i++) {
+      var itemBaseId = cart[i].id.split('::')[0];
+      if (itemBaseId === baseId) {
+        total += cart[i].qty;
+      }
+    }
+    return total;
+  }
+
+  // In-stock board inventory data (populated by loadBoardsInStock)
+  var instockInventory = {}; // { 'instock-1': { qty: 3 }, ... }
+
   function updateCartBadge() {
     var badge = document.getElementById('cart-count');
     if (!badge) return;
@@ -131,6 +147,7 @@
       if (item.options) {
         var o = item.options;
         optionsHtml = '<div class="cart-item__options">';
+        if (o.woodType) optionsHtml += '<span>Wood: ' + escapeHtml(o.woodType) + '</span>';
         if (o.mainWood) optionsHtml += '<span>Main: ' + escapeHtml(o.mainWood) + '</span>';
         if (o.stripeWood) optionsHtml += '<span>Stripe: ' + escapeHtml(o.stripeWood) + '</span>';
         if (o.accentWood) optionsHtml += '<span>Accent: ' + escapeHtml(o.accentWood) + '</span>';
@@ -404,6 +421,7 @@
       var desc = item.qty + 'x ' + item.name + ' (' + formatPrice(item.price) + ')';
       if (item.options) {
         var parts = [];
+        if (item.options.woodType) parts.push('Wood: ' + item.options.woodType);
         if (item.options.mainWood) parts.push('Main: ' + item.options.mainWood);
         if (item.options.stripeWood) parts.push('Stripe: ' + item.options.stripeWood);
         if (item.options.accentWood) parts.push('Accent: ' + item.options.accentWood);
@@ -573,6 +591,9 @@
       var val = e.target.value.replace(/[^0-9]/g, '');
       var num = parseInt(val, 10);
       if (isNaN(num) || num < 1) num = 1;
+      // Enforce max for in-stock boards
+      var max = parseInt(e.target.getAttribute('max'), 10);
+      if (!isNaN(max) && max > 0 && num > max) num = max;
       e.target.value = num;
     });
   }
@@ -864,13 +885,15 @@
       var line = lines[i];
       var numMatch = line.match(/^\d+\.\s*Name:\s*(.+)/);
       if (numMatch) {
-        current = { name: numMatch[1].trim(), description: '', price: '', images: [] };
+        current = { name: numMatch[1].trim(), description: '', price: '', images: [], qty: 0 };
         boards.push(current);
         continue;
       }
       if (!current) continue;
       var priceMatch = line.match(/^Price:\s*(.+)/);
       if (priceMatch) { current.price = priceMatch[1].trim(); continue; }
+      var qtyMatch = line.match(/^Qty:\s*(\d+)/);
+      if (qtyMatch) { current.qty = parseInt(qtyMatch[1], 10); continue; }
       var imgMatch = line.match(/^Image:\s*(.+)/);
       if (imgMatch) {
         current.images = imgMatch[1].split(',').map(function (s) { return s.trim(); });
@@ -898,17 +921,22 @@
       imagesHtml += '<button type="button" class="product-carousel__next" aria-label="Next photo">&rsaquo;</button>';
     }
 
+    var qtyAvail = product.qty || 0;
+    var maxAttr = qtyAvail > 0 ? ' max="' + qtyAvail + '"' : '';
+
     return '<article class="product-card" data-product-id="' + safe(id) +
       '" data-product-name="' + safe(product.name) +
-      '" data-product-price="' + priceToCents(product.price) + '" data-in-stock="true">' +
+      '" data-product-price="' + priceToCents(product.price) +
+      '" data-in-stock="true" data-qty-available="' + qtyAvail + '">' +
       '<div class="' + imageClass + '">' + imagesHtml + '</div>' +
       '<div class="product-card__info">' +
       '<h3 class="product-card__name">' + safe(product.name) + '</h3>' +
       (product.description ? '<p class="product-card__description">' + safe(product.description) + '</p>' : '') +
       '<span class="product-card__price">' + safe(product.price) + '</span>' +
+      '<span class="product-card__stock-info">' + qtyAvail + ' available</span>' +
       '<div class="product-card__actions">' +
       '<label for="qty-' + safe(id) + '" class="sr-only">Quantity</label>' +
-      '<input type="number" id="qty-' + safe(id) + '" class="product-card__qty" value="1" min="1" step="1" aria-label="Quantity for ' + safe(product.name) + '">' +
+      '<input type="number" id="qty-' + safe(id) + '" class="product-card__qty" value="1" min="1"' + maxAttr + ' step="1" aria-label="Quantity for ' + safe(product.name) + '">' +
       '<button class="btn btn--outline product-card__instock-btn" type="button" aria-label="Options for ' + safe(product.name) + '">Add to Cart</button>' +
       '</div></div></article>';
   }
@@ -923,6 +951,7 @@
         var html = '';
         for (var i = 0; i < boards.length; i++) {
           var id = 'instock-' + (i + 1);
+          instockInventory[id] = { qty: boards[i].qty || 0 };
           html += buildInStockCardHTML(boards[i], id);
         }
         grid.innerHTML = html;
@@ -1035,6 +1064,11 @@
               '<label for="instock-eng-bot-align">Align</label>' +
               '<select id="instock-eng-bot-align"><option value="center">Center</option><option value="left">Left</option><option value="right">Right</option></select>' +
             '</div></div>' +
+            '<div class="engraving-preview" id="instock-eng-preview">' +
+              '<div class="engraving-preview__line engraving-preview__line--empty" id="instock-prev-top">&nbsp;</div>' +
+              '<div class="engraving-preview__line engraving-preview__line--empty" id="instock-prev-mid">&nbsp;</div>' +
+              '<div class="engraving-preview__line engraving-preview__line--empty" id="instock-prev-bot">&nbsp;</div>' +
+            '</div>' +
           '</div>' +
         '</div>' +
 
@@ -1066,6 +1100,52 @@
         }
         updatePrice();
       });
+    });
+
+    // Engraving preview
+    var instockEngTopInput = document.getElementById('instock-eng-top');
+    var instockEngMidInput = document.getElementById('instock-eng-mid');
+    var instockEngBotInput = document.getElementById('instock-eng-bot');
+    var instockEngTopAlign = document.getElementById('instock-eng-top-align');
+    var instockEngMidAlign = document.getElementById('instock-eng-mid-align');
+    var instockEngBotAlign = document.getElementById('instock-eng-bot-align');
+    var instockEngFont = document.getElementById('instock-eng-font');
+    var instockPrevTop = document.getElementById('instock-prev-top');
+    var instockPrevMid = document.getElementById('instock-prev-mid');
+    var instockPrevBot = document.getElementById('instock-prev-bot');
+    var instockEngPreview = document.getElementById('instock-eng-preview');
+
+    var INSTOCK_FONT_MAP = {
+      'serif': 'Georgia, "Times New Roman", serif',
+      'sans-serif': '"Inter", Arial, sans-serif',
+      'script': '"Brush Script MT", "Segoe Script", cursive',
+      'monospace': '"Courier New", Courier, monospace'
+    };
+
+    function updateInstockPreview() {
+      updateInstockPreviewLine(instockPrevTop, instockEngTopInput.value, instockEngTopAlign.value);
+      updateInstockPreviewLine(instockPrevMid, instockEngMidInput.value, instockEngMidAlign.value);
+      updateInstockPreviewLine(instockPrevBot, instockEngBotInput.value, instockEngBotAlign.value);
+      instockEngPreview.style.fontFamily = INSTOCK_FONT_MAP[instockEngFont.value] || '';
+    }
+
+    function updateInstockPreviewLine(el, text, align) {
+      var t = text.trim();
+      if (t) {
+        el.textContent = t;
+        el.classList.remove('engraving-preview__line--empty');
+      } else {
+        el.innerHTML = '&nbsp;';
+        el.classList.add('engraving-preview__line--empty');
+      }
+      el.style.textAlign = align;
+    }
+
+    [instockEngTopInput, instockEngMidInput, instockEngBotInput].forEach(function (inp) {
+      inp.addEventListener('input', updateInstockPreview);
+    });
+    [instockEngTopAlign, instockEngMidAlign, instockEngBotAlign, instockEngFont].forEach(function (sel) {
+      sel.addEventListener('change', updateInstockPreview);
     });
 
     function calcPrice() {
@@ -1162,9 +1242,27 @@
       if (isNaN(qty) || qty < 1) qty = 1;
       if (isNaN(price)) return;
 
+      // Enforce qty available limit
+      var inv = instockInventory[id];
+      if (inv && inv.qty > 0) {
+        var alreadyInCart = getCartQtyForProduct(id);
+        var remaining = inv.qty - alreadyInCart;
+        if (remaining <= 0) {
+          showToast('No more available — you already have ' + inv.qty + ' in your cart');
+          return;
+        }
+        if (qty > remaining) {
+          qty = remaining;
+          if (qtyInput) qtyInput.value = qty;
+          showToast('Only ' + remaining + ' more available — adjusted quantity');
+        }
+      }
+
       showInStockOptionsModal(name, price, qty, id, function (options, finalPrice) {
         addToCart(id, name, finalPrice, qty, undefined, options);
         updateCartBadge();
+        // Update displayed stock on the card
+        updateInStockDisplay(id);
         showToast(qty + 'x ' + name + ' added to cart');
       });
     });
@@ -1245,6 +1343,102 @@
   }
 
   // ---- Product Image Carousel ----
+
+  // ---- Update In-Stock Display After Cart Change ----
+
+  function updateInStockDisplay(productId) {
+    var card = document.querySelector('[data-product-id="' + productId + '"]');
+    if (!card) return;
+    var inv = instockInventory[productId];
+    if (!inv) return;
+    var inCart = getCartQtyForProduct(productId);
+    var remaining = Math.max(0, inv.qty - inCart);
+    var stockInfo = card.querySelector('.product-card__stock-info');
+    if (stockInfo) {
+      stockInfo.textContent = remaining + ' available';
+      if (remaining === 0) {
+        stockInfo.classList.add('product-card__stock-info--sold-out');
+      } else {
+        stockInfo.classList.remove('product-card__stock-info--sold-out');
+      }
+    }
+    var qtyInput = card.querySelector('.product-card__qty');
+    if (qtyInput) {
+      qtyInput.max = remaining;
+      if (parseInt(qtyInput.value, 10) > remaining) {
+        qtyInput.value = Math.max(1, remaining);
+      }
+    }
+    var addBtn = card.querySelector('.product-card__instock-btn');
+    if (addBtn) {
+      addBtn.disabled = remaining <= 0;
+      if (remaining <= 0) {
+        addBtn.textContent = 'Sold Out';
+      } else {
+        addBtn.textContent = 'Add to Cart';
+      }
+    }
+  }
+
+  // ---- Featured Products (Homepage) ----
+
+  function loadFeaturedProducts() {
+    var grid = document.getElementById('featured-grid');
+    if (!grid) return;
+
+    var boardsPromise = fetch('BoardsInStock.md').then(function (r) { return r.text(); });
+    var chairsPromise = fetch('Chairs.md').then(function (r) { return r.text(); });
+
+    Promise.all([boardsPromise, chairsPromise]).then(function (results) {
+      var boards = parseBoardsInStockMd(results[0]);
+      var chairs = parseChairsMd(results[1]);
+      var html = '';
+
+      // 2 Available Now boards (first two from BoardsInStock.md)
+      var boardCount = Math.min(2, boards.length);
+      for (var i = 0; i < boardCount; i++) {
+        var b = boards[i];
+        var img = b.images.length ? b.images[0] : '';
+        html +=
+          '<article class="product-card">' +
+            '<div class="product-card__image">' +
+              '<a href="catalog.html">' +
+                '<img src="images/products/' + escapeHtml(img) + '.jpg" alt="' + escapeHtml(b.name) + '" loading="lazy">' +
+              '</a>' +
+            '</div>' +
+            '<div class="product-card__info">' +
+              '<h3 class="product-card__name"><a href="catalog.html">' + escapeHtml(b.name) + '</a></h3>' +
+              '<span class="product-card__badge">Available Now</span>' +
+              '<span class="product-card__price">' + escapeHtml(b.price) + '</span>' +
+            '</div>' +
+          '</article>';
+      }
+
+      // 1 other product (random chair)
+      if (chairs.length > 0) {
+        var randIdx = Math.floor(Math.random() * chairs.length);
+        var c = chairs[randIdx];
+        var chairImg = c.images.length ? c.images[0] : '';
+        html +=
+          '<article class="product-card">' +
+            '<div class="product-card__image">' +
+              '<a href="catalog.html">' +
+                '<img src="images/products/' + escapeHtml(chairImg) + '.jpg" alt="' + escapeHtml(c.name) + ' Adirondack Chair" loading="lazy">' +
+              '</a>' +
+            '</div>' +
+            '<div class="product-card__info">' +
+              '<h3 class="product-card__name"><a href="catalog.html">' + escapeHtml(c.name) + ' Adirondack Chair</a></h3>' +
+              '<span class="product-card__badge product-card__badge--custom">Built to Order</span>' +
+              '<span class="product-card__price">' + escapeHtml(c.price) + '</span>' +
+            '</div>' +
+          '</article>';
+      }
+
+      grid.innerHTML = html;
+    }).catch(function (err) {
+      console.error('Failed to load featured products:', err);
+    });
+  }
 
   // ---- Chairs.md Data-Driven Rendering ----
 
@@ -1369,6 +1563,11 @@
         removeFromCart(id);
         updateCartBadge();
         renderCartPanel();
+        // Update the catalog card display if visible
+        var baseId = id.split('::')[0];
+        if (instockInventory[baseId]) {
+          updateInStockDisplay(baseId);
+        }
       }
     });
 
@@ -1386,6 +1585,15 @@
       if (!item) return;
       var newQty = item.qty;
       if (btn.classList.contains('cart-item__qty-plus')) {
+        // Enforce in-stock limit
+        var baseId = id.split('::')[0];
+        if (instockInventory[baseId]) {
+          var totalInCart = getCartQtyForProduct(baseId);
+          if (totalInCart >= instockInventory[baseId].qty) {
+            showToast('Only ' + instockInventory[baseId].qty + ' available');
+            return;
+          }
+        }
         newQty++;
       } else if (btn.classList.contains('cart-item__qty-minus')) {
         newQty--;
@@ -1393,6 +1601,11 @@
       updateQty(id, newQty);
       updateCartBadge();
       renderCartPanel();
+      // Update the catalog card display if visible
+      var baseIdUpdate = id.split('::')[0];
+      if (instockInventory[baseIdUpdate]) {
+        updateInStockDisplay(baseIdUpdate);
+      }
     });
 
     // Quote request button
@@ -1436,6 +1649,9 @@
 
     // Load chairs from Chairs.md
     loadChairsFromMd();
+
+    // Load featured products (homepage)
+    loadFeaturedProducts();
 
     // Load wood inventory
     loadWoodInventory();
@@ -2048,10 +2264,10 @@
   // ---- Gallery Slideshow ----
 
   function initGallerySlideshow() {
-    var container = document.getElementById('gallery-slideshow');
-    if (!container) return;
+    var track = document.getElementById('gallery-track');
+    if (!track) return;
 
-    // Collect all .jpg images from across the site's image directories
+    // Image sources from across the site
     var imageSources = [
       { dir: 'images/gallery/', files: [
         'Basic Cherry with Stripe.jpg',
@@ -2089,64 +2305,225 @@
 
     if (!allImages.length) return;
 
-    var mainImg = document.getElementById('gallery-main-img');
-    var counter = document.getElementById('gallery-counter');
-    var thumbsContainer = document.getElementById('gallery-thumbs');
-    var prevBtn = container.querySelector('.gallery-slideshow__prev');
-    var nextBtn = container.querySelector('.gallery-slideshow__next');
-    var currentIdx = 0;
+    // Size variants cycle
+    var sizes = ['tall', 'wide', 'square', 'wide', 'tall', 'square'];
 
-    // Build thumbnails
-    var thumbsHtml = '';
+    // Build gallery items
+    var html = '';
     for (var i = 0; i < allImages.length; i++) {
-      thumbsHtml += '<button type="button" class="gallery-slideshow__thumb' +
-        (i === 0 ? ' gallery-slideshow__thumb--active' : '') +
-        '" data-gallery-idx="' + i + '">' +
-        '<img src="' + allImages[i] + '" alt="Thumbnail ' + (i + 1) + '" loading="lazy">' +
-        '</button>';
+      var sizeClass = 'gallery-scroll__item--' + sizes[i % sizes.length];
+      html += '<div class="gallery-scroll__item ' + sizeClass + '" data-gallery-idx="' + i + '">' +
+        '<img src="' + allImages[i] + '" alt="Gallery image ' + (i + 1) + '" loading="lazy">' +
+        '</div>';
     }
-    thumbsContainer.innerHTML = thumbsHtml;
+    track.innerHTML = html;
 
-    function showImage(idx) {
-      currentIdx = idx;
-      mainImg.src = allImages[idx];
-      mainImg.alt = 'Gallery image ' + (idx + 1) + ' of ' + allImages.length;
-      counter.textContent = (idx + 1) + ' / ' + allImages.length;
+    // ---- Drag-to-scroll ----
+    var scrollSection = document.getElementById('gallery-scroll');
+    var isDragging = false;
+    var startX = 0;
+    var scrollLeft = 0;
+    var currentTranslate = 0;
+    var trackWidth = track.scrollWidth;
+    var containerWidth = scrollSection.offsetWidth;
+    var maxTranslate = 0;
+    var minTranslate = -(trackWidth - containerWidth);
+    var velocity = 0;
+    var lastX = 0;
+    var lastTime = 0;
+    var animationId = null;
 
-      var thumbs = thumbsContainer.querySelectorAll('.gallery-slideshow__thumb');
-      thumbs.forEach(function (t) { t.classList.remove('gallery-slideshow__thumb--active'); });
-      if (thumbs[idx]) {
-        thumbs[idx].classList.add('gallery-slideshow__thumb--active');
-        thumbs[idx].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    function clamp(val, min, max) {
+      return Math.max(min, Math.min(max, val));
+    }
+
+    function recalcBounds() {
+      trackWidth = track.scrollWidth;
+      containerWidth = scrollSection.offsetWidth;
+      minTranslate = Math.min(0, -(trackWidth - containerWidth));
+    }
+
+    function setTranslate(val) {
+      currentTranslate = clamp(val, minTranslate, maxTranslate);
+      track.style.transform = 'translateX(' + currentTranslate + 'px)';
+    }
+
+    // Mouse drag
+    scrollSection.addEventListener('mousedown', function (e) {
+      if (e.target.closest('.gallery-lightbox')) return;
+      isDragging = true;
+      startX = e.pageX;
+      scrollLeft = currentTranslate;
+      lastX = e.pageX;
+      lastTime = Date.now();
+      velocity = 0;
+      if (animationId) { cancelAnimationFrame(animationId); animationId = null; }
+      scrollSection.style.cursor = 'grabbing';
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', function (e) {
+      if (!isDragging) return;
+      var dx = e.pageX - startX;
+      setTranslate(scrollLeft + dx);
+
+      // Track velocity for momentum
+      var now = Date.now();
+      var dt = now - lastTime;
+      if (dt > 0) {
+        velocity = (e.pageX - lastX) / dt;
       }
+      lastX = e.pageX;
+      lastTime = now;
+    });
+
+    document.addEventListener('mouseup', function () {
+      if (!isDragging) return;
+      isDragging = false;
+      scrollSection.style.cursor = '';
+      // Momentum scroll
+      startMomentum();
+    });
+
+    // Touch drag
+    scrollSection.addEventListener('touchstart', function (e) {
+      var touch = e.touches[0];
+      isDragging = true;
+      startX = touch.pageX;
+      scrollLeft = currentTranslate;
+      lastX = touch.pageX;
+      lastTime = Date.now();
+      velocity = 0;
+      if (animationId) { cancelAnimationFrame(animationId); animationId = null; }
+    }, { passive: true });
+
+    scrollSection.addEventListener('touchmove', function (e) {
+      if (!isDragging) return;
+      var touch = e.touches[0];
+      var dx = touch.pageX - startX;
+      setTranslate(scrollLeft + dx);
+
+      var now = Date.now();
+      var dt = now - lastTime;
+      if (dt > 0) {
+        velocity = (touch.pageX - lastX) / dt;
+      }
+      lastX = touch.pageX;
+      lastTime = now;
+    }, { passive: true });
+
+    scrollSection.addEventListener('touchend', function () {
+      if (!isDragging) return;
+      isDragging = false;
+      startMomentum();
+    });
+
+    function startMomentum() {
+      var friction = 0.95;
+      var momentumVel = velocity * 15; // amplify
+
+      function animate() {
+        if (Math.abs(momentumVel) < 0.5) return;
+        momentumVel *= friction;
+        setTranslate(currentTranslate + momentumVel);
+        animationId = requestAnimationFrame(animate);
+      }
+      animationId = requestAnimationFrame(animate);
     }
 
-    showImage(0);
+    // Wheel scroll horizontal
+    scrollSection.addEventListener('wheel', function (e) {
+      e.preventDefault();
+      recalcBounds();
+      var delta = e.deltaY !== 0 ? e.deltaY : e.deltaX;
+      setTranslate(currentTranslate - delta * 1.5);
+    }, { passive: false });
 
-    prevBtn.addEventListener('click', function () {
-      showImage((currentIdx - 1 + allImages.length) % allImages.length);
+    // ---- 3D Tilt on hover ----
+    var items = track.querySelectorAll('.gallery-scroll__item');
+    items.forEach(function (item) {
+      item.addEventListener('mousemove', function (e) {
+        if (isDragging) return;
+        var rect = item.getBoundingClientRect();
+        var x = e.clientX - rect.left;
+        var y = e.clientY - rect.top;
+        var centerX = rect.width / 2;
+        var centerY = rect.height / 2;
+        var rotateY = ((x - centerX) / centerX) * 12;
+        var rotateX = ((centerY - y) / centerY) * 12;
+        item.style.transform = 'perspective(800px) rotateX(' + rotateX + 'deg) rotateY(' + rotateY + 'deg) scale(1.03)';
+      });
+
+      item.addEventListener('mouseleave', function () {
+        item.style.transform = '';
+      });
+
+      // Click to open lightbox
+      item.addEventListener('click', function (e) {
+        // Only open if not dragging (allow small threshold)
+        if (Math.abs(e.pageX - startX) > 5) return;
+        var idx = parseInt(item.getAttribute('data-gallery-idx'), 10);
+        openLightbox(idx);
+      });
     });
 
-    nextBtn.addEventListener('click', function () {
-      showImage((currentIdx + 1) % allImages.length);
+    // ---- Lightbox ----
+    var lightbox = document.getElementById('gallery-lightbox');
+    var lightboxImg = document.getElementById('lightbox-img');
+    var lightboxClose = lightbox.querySelector('.gallery-lightbox__close');
+    var lightboxPrev = lightbox.querySelector('.gallery-lightbox__prev');
+    var lightboxNext = lightbox.querySelector('.gallery-lightbox__next');
+    var lightboxIdx = 0;
+
+    function openLightbox(idx) {
+      lightboxIdx = idx;
+      lightboxImg.src = allImages[idx];
+      lightboxImg.alt = 'Gallery image ' + (idx + 1) + ' of ' + allImages.length;
+      lightbox.classList.add('gallery-lightbox--open');
+      lightbox.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+      lightboxClose.focus();
+    }
+
+    function closeLightbox() {
+      lightbox.classList.remove('gallery-lightbox--open');
+      lightbox.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+    }
+
+    lightboxClose.addEventListener('click', closeLightbox);
+    lightbox.addEventListener('click', function (e) {
+      if (e.target === lightbox) closeLightbox();
     });
 
-    thumbsContainer.addEventListener('click', function (e) {
-      var thumb = e.target.closest('.gallery-slideshow__thumb');
-      if (!thumb) return;
-      var idx = parseInt(thumb.getAttribute('data-gallery-idx'), 10);
-      if (!isNaN(idx)) showImage(idx);
+    lightboxPrev.addEventListener('click', function (e) {
+      e.stopPropagation();
+      lightboxIdx = (lightboxIdx - 1 + allImages.length) % allImages.length;
+      lightboxImg.src = allImages[lightboxIdx];
     });
 
-    // Keyboard navigation
+    lightboxNext.addEventListener('click', function (e) {
+      e.stopPropagation();
+      lightboxIdx = (lightboxIdx + 1) % allImages.length;
+      lightboxImg.src = allImages[lightboxIdx];
+    });
+
     document.addEventListener('keydown', function (e) {
-      if (!container.closest('main')) return;
+      if (!lightbox.classList.contains('gallery-lightbox--open')) return;
+      if (e.key === 'Escape') closeLightbox();
       if (e.key === 'ArrowLeft') {
-        showImage((currentIdx - 1 + allImages.length) % allImages.length);
-      } else if (e.key === 'ArrowRight') {
-        showImage((currentIdx + 1) % allImages.length);
+        lightboxIdx = (lightboxIdx - 1 + allImages.length) % allImages.length;
+        lightboxImg.src = allImages[lightboxIdx];
+      }
+      if (e.key === 'ArrowRight') {
+        lightboxIdx = (lightboxIdx + 1) % allImages.length;
+        lightboxImg.src = allImages[lightboxIdx];
       }
     });
+
+    // Recalc on resize
+    window.addEventListener('resize', recalcBounds);
+    recalcBounds();
   }
 
   // ---- Scroll Reveal (Intersection Observer) ----
