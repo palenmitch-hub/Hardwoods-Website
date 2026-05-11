@@ -1398,18 +1398,26 @@
       var boardCount = Math.min(2, boards.length);
       for (var i = 0; i < boardCount; i++) {
         var b = boards[i];
+        var id = 'instock-' + (i + 1);
         var img = b.images.length ? b.images[0] : '';
+        var priceCents = priceToCents(b.price);
         html +=
-          '<article class="product-card">' +
+          '<article class="product-card" data-product-id="' + escapeHtml(id) +
+            '" data-product-name="' + escapeHtml(b.name) +
+            '" data-product-price="' + priceCents +
+            '" data-in-stock="true" data-qty-available="' + (b.qty || 0) + '">' +
             '<div class="product-card__image">' +
-              '<a href="catalog.html">' +
-                '<img src="images/products/' + escapeHtml(img) + '.jpg" alt="' + escapeHtml(b.name) + '" loading="lazy">' +
-              '</a>' +
+              '<img src="images/products/' + escapeHtml(img) + '.jpg" alt="' + escapeHtml(b.name) + '" loading="lazy">' +
             '</div>' +
             '<div class="product-card__info">' +
-              '<h3 class="product-card__name"><a href="catalog.html">' + escapeHtml(b.name) + '</a></h3>' +
+              '<h3 class="product-card__name">' + escapeHtml(b.name) + '</h3>' +
               '<span class="product-card__badge">Available Now</span>' +
               '<span class="product-card__price">' + escapeHtml(b.price) + '</span>' +
+              '<div class="product-card__actions">' +
+                '<label for="qty-feat-' + escapeHtml(id) + '" class="sr-only">Quantity</label>' +
+                '<input type="number" id="qty-feat-' + escapeHtml(id) + '" class="product-card__qty" value="1" min="1" max="' + (b.qty || 1) + '" step="1" aria-label="Quantity for ' + escapeHtml(b.name) + '">' +
+                '<button class="btn btn--outline product-card__instock-btn" type="button" aria-label="Add ' + escapeHtml(b.name) + ' to cart">Add to Cart</button>' +
+              '</div>' +
             '</div>' +
           '</article>';
       }
@@ -1418,18 +1426,25 @@
       if (chairs.length > 0) {
         var randIdx = Math.floor(Math.random() * chairs.length);
         var c = chairs[randIdx];
+        var chairId = 'chair-' + c.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + (randIdx + 1);
         var chairImg = c.images.length ? c.images[0] : '';
+        var chairPriceCents = priceToCents(c.price);
         html +=
-          '<article class="product-card">' +
+          '<article class="product-card" data-product-id="' + escapeHtml(chairId) +
+            '" data-product-name="' + escapeHtml(c.name) + ' Adirondack Chair' +
+            '" data-product-price="' + chairPriceCents + '">' +
             '<div class="product-card__image">' +
-              '<a href="catalog.html">' +
-                '<img src="images/products/' + escapeHtml(chairImg) + '.jpg" alt="' + escapeHtml(c.name) + ' Adirondack Chair" loading="lazy">' +
-              '</a>' +
+              '<img src="images/products/' + escapeHtml(chairImg) + '.jpg" alt="' + escapeHtml(c.name) + ' Adirondack Chair" loading="lazy">' +
             '</div>' +
             '<div class="product-card__info">' +
-              '<h3 class="product-card__name"><a href="catalog.html">' + escapeHtml(c.name) + ' Adirondack Chair</a></h3>' +
+              '<h3 class="product-card__name">' + escapeHtml(c.name) + ' Adirondack Chair</h3>' +
               '<span class="product-card__badge product-card__badge--custom">Built to Order</span>' +
               '<span class="product-card__price">' + escapeHtml(c.price) + '</span>' +
+              '<div class="product-card__actions">' +
+                '<label for="qty-feat-' + escapeHtml(chairId) + '" class="sr-only">Quantity</label>' +
+                '<input type="number" id="qty-feat-' + escapeHtml(chairId) + '" class="product-card__qty" value="1" min="1" step="1" aria-label="Quantity for ' + escapeHtml(c.name) + ' Adirondack Chair">' +
+                '<button class="btn btn--accent product-card__add" type="button" aria-label="Add ' + escapeHtml(c.name) + ' Adirondack Chair to cart">Add to Cart</button>' +
+              '</div>' +
             '</div>' +
           '</article>';
       }
@@ -1729,6 +1744,25 @@
     var ENGRAVING_INFO = 'Choose your font, type out your message, and choose where on the board you would like it! Feel free to use multiple levels and alignments to make it your own!';
     var SET_INFO = 'Choose this option to add a second matching board, this will be smaller and thinner with no juice groove, perfect to pull out for smaller or quick tasks!';
 
+    // Wood color map
+    var WOOD_COLORS = {
+      'Walnut': { main: '#4a3728', grain: '#3d2d20' },
+      'Maple': { main: '#f0d6a7', grain: '#e6c78f' },
+      'Cherry': { main: '#a0522d', grain: '#8b4726' },
+      'Padauk': { main: '#c0392b', grain: '#a93226' },
+      'Purple Heart': { main: '#6b3fa0', grain: '#5b348a' },
+      'Wenge': { main: '#2c1e0f', grain: '#1f1509' },
+      'Limba': { main: '#d4b87a', grain: '#c4a86a' },
+      'Zebra': { main: '#e8d5a3', grain: '#3d2d20' },
+      'None': { main: '#888888', grain: '#777777' },
+      'Creators Choice': { main: '#b8a080', grain: '#a89070' }
+    };
+    var DEFAULT_WOOD = { main: '#c8b090', grain: '#b8a080' };
+
+    function getWoodColor(name) {
+      return WOOD_COLORS[name] || DEFAULT_WOOD;
+    }
+
     // Detect board type
     var boardType = 'default';
     var lowerName = productName.toLowerCase();
@@ -1798,6 +1832,11 @@
         '<h3 id="opt-title">' + escapeHtml(productName) + '</h3>' +
         '<p class="board-options-modal__subtitle">Customize your board</p>' +
         '<span class="board-options-modal__price" id="opt-live-price">' + formatPrice(basePrice) + '</span>' +
+
+        // Board Preview
+        '<div class="board-preview" id="opt-board-preview">' +
+          '<svg id="opt-board-svg" viewBox="0 0 300 200" preserveAspectRatio="xMidYMid meet" aria-label="Board preview"></svg>' +
+        '</div>' +
 
         woodSelectsHtml +
 
@@ -1957,6 +1996,201 @@
     var addCartBtn = document.getElementById('opt-add-cart');
     var livePrice = document.getElementById('opt-live-price');
 
+    // ---- Board Preview Rendering ----
+    var boardSvg = document.getElementById('opt-board-svg');
+
+    function renderBoardPreview() {
+      var mainWoodSel = document.getElementById('opt-mainWood');
+      var mainColor = mainWoodSel ? getWoodColor(mainWoodSel.value) : DEFAULT_WOOD;
+
+      var svg = '';
+      var W = 300, H = 200;
+      var padding = 10;
+      var boardW = W - padding * 2;
+      var boardH = H - padding * 2;
+      var rx = 6;
+
+      // Board outline
+      svg += '<rect x="' + padding + '" y="' + padding + '" width="' + boardW + '" height="' + boardH + '" rx="' + rx + '" fill="' + mainColor.main + '" stroke="#222" stroke-width="1.5"/>';
+
+      // Add grain lines to main wood
+      for (var g = 0; g < 8; g++) {
+        var gy = padding + 15 + g * (boardH / 9);
+        svg += '<line x1="' + (padding + 5) + '" y1="' + gy + '" x2="' + (padding + boardW - 5) + '" y2="' + (gy + 3) + '" stroke="' + mainColor.grain + '" stroke-width="0.8" opacity="0.4"/>';
+      }
+
+      if (boardType === '1stripe' || boardType === 'default') {
+        var stripeSel = document.getElementById('opt-stripeWood');
+        var accentSel = document.getElementById('opt-accentWood');
+        var stripeColor = stripeSel ? getWoodColor(stripeSel.value) : DEFAULT_WOOD;
+        var accentColor = accentSel ? getWoodColor(accentSel.value) : DEFAULT_WOOD;
+
+        // Center horizontal stripe
+        var stripeH = 20;
+        var stripeY = padding + (boardH - stripeH) / 2;
+        svg += '<rect x="' + padding + '" y="' + stripeY + '" width="' + boardW + '" height="' + stripeH + '" rx="0" fill="' + stripeColor.main + '"/>';
+
+        // Thin accent lines above and below stripe
+        var accentH = 5;
+        svg += '<rect x="' + padding + '" y="' + (stripeY - accentH - 2) + '" width="' + boardW + '" height="' + accentH + '" fill="' + accentColor.main + '"/>';
+        svg += '<rect x="' + padding + '" y="' + (stripeY + stripeH + 2) + '" width="' + boardW + '" height="' + accentH + '" fill="' + accentColor.main + '"/>';
+
+      } else if (boardType === 'multistripe') {
+        var mainStripeSel = document.getElementById('opt-mainStripe');
+        var accent1Sel = document.getElementById('opt-stripeAccent1');
+        var accent2Sel = document.getElementById('opt-stripeAccent2');
+        var mainStripeColor = mainStripeSel ? getWoodColor(mainStripeSel.value) : DEFAULT_WOOD;
+        var accent1Color = accent1Sel ? getWoodColor(accent1Sel.value) : DEFAULT_WOOD;
+        var accent2Color = accent2Sel && accent2Sel.value ? getWoodColor(accent2Sel.value) : mainStripeColor;
+
+        // Layout: outer stripe | gap | accent1 | center stripe (2x) | accent1 | gap | outer stripe
+        var thinH = 8;
+        var thickH = thinH * 2;
+        var accent1H = 6;
+        var centerY = padding + boardH / 2;
+
+        // Center main stripe
+        svg += '<rect x="' + padding + '" y="' + (centerY - thickH / 2) + '" width="' + boardW + '" height="' + thickH + '" fill="' + mainStripeColor.main + '"/>';
+
+        // Accent 1 directly above and below center stripe
+        svg += '<rect x="' + padding + '" y="' + (centerY - thickH / 2 - accent1H) + '" width="' + boardW + '" height="' + accent1H + '" fill="' + accent1Color.main + '"/>';
+        svg += '<rect x="' + padding + '" y="' + (centerY + thickH / 2) + '" width="' + boardW + '" height="' + accent1H + '" fill="' + accent1Color.main + '"/>';
+
+        // Outer stripes evenly spaced between center group and board edge
+        var topEdge = padding;
+        var botEdge = padding + boardH;
+        var centerGroupTop = centerY - thickH / 2 - accent1H;
+        var centerGroupBot = centerY + thickH / 2 + accent1H;
+        var outerTopY = topEdge + (centerGroupTop - topEdge - thinH) / 2;
+        var outerBotY = centerGroupBot + (botEdge - centerGroupBot - thinH) / 2;
+
+        svg += '<rect x="' + padding + '" y="' + outerTopY + '" width="' + boardW + '" height="' + thinH + '" fill="' + accent2Color.main + '"/>';
+        svg += '<rect x="' + padding + '" y="' + outerBotY + '" width="' + boardW + '" height="' + thinH + '" fill="' + accent2Color.main + '"/>';
+
+      } else if (boardType === 'sporadic') {
+        var anotherWoodRadio = modal.querySelector('input[name="anotherWood"]:checked');
+        var hasAccent = anotherWoodRadio && anotherWoodRadio.value === 'yes';
+        var accentSel = document.getElementById('opt-accentWood');
+        var accentColor = (hasAccent && accentSel) ? getWoodColor(accentSel.value) : null;
+
+        // End-grain grid of uniform blocks with sporadic accent pieces
+        var blockW = 22;
+        var blockH = 22;
+        var gapX = 3;
+        var gapY = 3;
+        var cols = Math.floor((boardW + gapX) / (blockW + gapX));
+        var rows = Math.floor((boardH + gapY) / (blockH + gapY));
+        var gridW = cols * blockW + (cols - 1) * gapX;
+        var gridH = rows * blockH + (rows - 1) * gapY;
+        var offsetX = padding + (boardW - gridW) / 2;
+        var offsetY = padding + (boardH - gridH) / 2;
+
+        // Pick 22-26 sporadic accent positions, at least 2 per column, none vertically adjacent
+        var totalBlocks = cols * rows;
+        var accentCount = Math.min(26, Math.max(22, Math.floor(totalBlocks * 0.35)));
+        var accentPositions = {};
+
+        // Helper: check if placing accent at (row, col) would be adjacent vertically
+        function hasVerticalNeighbor(r, c) {
+          if (r > 0 && accentPositions[(r - 1) * cols + c]) return true;
+          if (r < rows - 1 && accentPositions[(r + 1) * cols + c]) return true;
+          return false;
+        }
+
+        // First guarantee at least 2 accent pieces per column, non-adjacent
+        var sporadicRowOffsets = [1, 4, 0, 5, 2, 6, 1, 3, 5, 2, 4, 0];
+        for (var col2 = 0; col2 < cols; col2++) {
+          var r1 = sporadicRowOffsets[col2 % sporadicRowOffsets.length] % rows;
+          // Shift column 10 (index 9) accent pieces up by 1
+          if (col2 === 9 && r1 > 0) r1 = r1 - 1;
+          // Column 9 (index 8): shift top piece down 1
+          if (col2 === 8) {
+            r1 = (r1 + 1) % rows;
+          }
+          accentPositions[r1 * cols + col2] = true;
+          // Pick r2 that is not adjacent to r1
+          var r2 = sporadicRowOffsets[(col2 + 4) % sporadicRowOffsets.length] % rows;
+          if (col2 === 9 && r2 > 0) r2 = r2 - 1;
+          if (r2 === r1) r2 = (r1 + 2) % rows;
+          if (Math.abs(r2 - r1) <= 1) r2 = (r1 + 2) % rows;
+          if (r2 < 0) r2 += rows;
+          accentPositions[r2 * cols + col2] = true;
+        }
+
+        // Fill remaining accent spots sporadically, enforcing no vertical adjacency
+        var placed = Object.keys(accentPositions).length;
+        var fillStep = Math.max(1, Math.floor(totalBlocks / (accentCount - placed + 1)));
+        var fillOffsets = [0, 5, 2, 7, 1, 4, 6, 3, 0, 5, 2, 7, 1, 4, 6, 3];
+        var fillIdx = 0;
+        var maxIter = totalBlocks * 2;
+        while (placed < accentCount && fillIdx < maxIter) {
+          var pos = (fillIdx * fillStep + fillOffsets[fillIdx % fillOffsets.length]) % totalBlocks;
+          var pRow = Math.floor(pos / cols);
+          var pCol = pos % cols;
+          // Skip column 9 (index 8) — only keep its 2 initial pieces
+          if (!accentPositions[pos] && pCol !== 8 && !hasVerticalNeighbor(pRow, pCol)) {
+            accentPositions[pos] = true;
+            placed++;
+          }
+          fillIdx++;
+        }
+
+        var idx = 0;
+        var halfBlock = (blockH + gapY) / 2;
+        var boardBottom = padding + boardH;
+        for (var row = 0; row < rows; row++) {
+          for (var col = 0; col < cols; col++) {
+            var bx = offsetX + col * (blockW + gapX);
+            var by = offsetY + row * (blockH + gapY) + (col % 2 === 1 ? halfBlock : 0);
+            var bh = blockH;
+            // Clip blocks that extend past the board bottom
+            if (by + bh > boardBottom) {
+              bh = boardBottom - by;
+              if (bh <= 0) { idx++; continue; }
+            }
+            var isAccent = accentColor && accentPositions[idx];
+            var bColor = isAccent ? accentColor : mainColor;
+            svg += '<rect x="' + bx + '" y="' + by + '" width="' + blockW + '" height="' + bh + '" fill="' + bColor.main + '" stroke="' + bColor.grain + '" stroke-width="0.5" rx="1"/>';
+            idx++;
+          }
+        }
+      }
+
+      // Juice groove
+      var juiceGroove = modal.querySelector('input[name="juiceGroove"]:checked');
+      if (juiceGroove && juiceGroove.value === 'yes') {
+        var grooveInset = 18;
+        svg += '<rect x="' + (padding + grooveInset) + '" y="' + (padding + grooveInset) + '" width="' + (boardW - grooveInset * 2) + '" height="' + (boardH - grooveInset * 2) + '" rx="4" fill="none" stroke="rgba(0,0,0,0.35)" stroke-width="2.5" stroke-dasharray="4 2"/>';
+      }
+
+      // Handles (cutouts on short sides)
+      var handles = modal.querySelector('input[name="handles"]:checked');
+      if (handles && handles.value === 'yes') {
+        var handleW = 30;
+        var handleH = 12;
+        var hY = padding + (boardH - handleH) / 2;
+        svg += '<rect x="' + (padding - 1) + '" y="' + hY + '" width="' + handleW + '" height="' + handleH + '" rx="4" fill="#1a1a1a" opacity="0.6"/>';
+        svg += '<rect x="' + (padding + boardW - handleW + 1) + '" y="' + hY + '" width="' + handleW + '" height="' + handleH + '" rx="4" fill="#1a1a1a" opacity="0.6"/>';
+      }
+
+      // Feet
+      var feet = modal.querySelector('input[name="feet"]:checked');
+      if (feet && feet.value !== 'none') {
+        var footR = feet.value === 'brass' ? 5 : 4;
+        var footColor = feet.value === 'brass' ? '#c9a84c' : '#333';
+        var footInset = 25;
+        svg += '<circle cx="' + (padding + footInset) + '" cy="' + (padding + footInset) + '" r="' + footR + '" fill="' + footColor + '"/>';
+        svg += '<circle cx="' + (padding + boardW - footInset) + '" cy="' + (padding + footInset) + '" r="' + footR + '" fill="' + footColor + '"/>';
+        svg += '<circle cx="' + (padding + footInset) + '" cy="' + (padding + boardH - footInset) + '" r="' + footR + '" fill="' + footColor + '"/>';
+        svg += '<circle cx="' + (padding + boardW - footInset) + '" cy="' + (padding + boardH - footInset) + '" r="' + footR + '" fill="' + footColor + '"/>';
+      }
+
+      boardSvg.innerHTML = svg;
+    }
+
+    // Initial render
+    renderBoardPreview();
+
     // "Add Another Wood" toggle for sporadic boards
     if (boardType === 'sporadic') {
       var accentField = document.getElementById('opt-accent-wood-field');
@@ -1969,6 +2203,7 @@
             accentField.classList.remove('board-accent-wood-field--visible');
           }
           updateLivePrice();
+          renderBoardPreview();
         });
       });
     }
@@ -2066,12 +2301,12 @@
       livePrice.textContent = formatPrice(calcTotalPrice());
     }
 
-    // Attach price update to all radios and selects
+    // Attach price update and preview update to all radios and selects
     modal.querySelectorAll('input[type="radio"]').forEach(function (r) {
-      r.addEventListener('change', updateLivePrice);
+      r.addEventListener('change', function () { updateLivePrice(); renderBoardPreview(); });
     });
     modal.querySelectorAll('select').forEach(function (s) {
-      s.addEventListener('change', updateLivePrice);
+      s.addEventListener('change', function () { updateLivePrice(); renderBoardPreview(); });
     });
 
     // Cleanup
