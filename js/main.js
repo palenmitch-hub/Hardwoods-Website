@@ -1674,6 +1674,9 @@
     // Board options modal handler
     initBoardOptions();
 
+    // Pattern board options handler
+    initPatternBoardOptions();
+
     // In-stock board options handler
     initInStockOptions();
 
@@ -2496,6 +2499,394 @@
       if (isNaN(price)) return;
 
       showBoardOptionsModal(name, price, qty, id, function (options, finalPrice) {
+        addToCart(id, name, finalPrice, qty, undefined, options);
+        updateCartBadge();
+        showToast(qty + 'x ' + name + ' added to cart');
+      });
+    });
+  }
+
+  // ---- Pattern Board Options Modal ----
+
+  function showPatternBoardOptionsModal(productName, basePrice, qty, productId, hasColorChoice, callback) {
+    var old = document.getElementById('pattern-options-modal');
+    if (old) old.remove();
+
+    var HANDLE_PRICE = 1000;
+    var BASIC_FEET_PRICE = 500;
+    var BRASS_FEET_PRICE = 2000;
+    var ENGRAVING_PRICE_OPT = 2000;
+    var JUICE_GROOVE_PRICE = 1000;
+
+    var HANDLES_INFO = 'These are cutout from the bottom of the board to make it easier to pick up, these are NOT physical handles that are attached or added on.';
+    var FEET_INFO = 'Basic feet are just small black ruberized feet and the Brass Feet are actual metal (brass) feet with a rubber O ring inlayed that adds another level of beauty and function.';
+    var ENGRAVING_INFO = 'Choose your font, type out your message, and choose where on the board you would like it! Feel free to use multiple levels and alignments to make it your own!';
+
+    // Color choice section (only for Tight Weave and Large Weave)
+    var colorChoiceHtml = '';
+    if (hasColorChoice) {
+      colorChoiceHtml =
+        '<div class="board-opt-group">' +
+          '<span class="board-opt-group__label">Choose Color</span>' +
+          '<div class="board-opt-radios">' +
+            '<div class="board-opt-radio">' +
+              '<input type="radio" id="pat-color-purple" name="patColor" value="Purple Heart" checked>' +
+              '<label for="pat-color-purple">Purple Heart</label>' +
+            '</div>' +
+            '<div class="board-opt-radio">' +
+              '<input type="radio" id="pat-color-padauk" name="patColor" value="Padauk">' +
+              '<label for="pat-color-padauk">Padauk (Red)</label>' +
+            '</div>' +
+            '<div class="board-opt-radio">' +
+              '<input type="radio" id="pat-color-cherry" name="patColor" value="Cherry">' +
+              '<label for="pat-color-cherry">Cherry (Light Brown)</label>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+    }
+
+    var modal = document.createElement('div');
+    modal.id = 'pattern-options-modal';
+    modal.className = 'board-options-modal';
+
+    var dialogHtml =
+      '<div class="board-options-modal__backdrop"></div>' +
+      '<div class="board-options-modal__dialog" role="dialog" aria-labelledby="pat-opt-title" aria-modal="true">' +
+        '<button type="button" class="board-options-modal__close" aria-label="Close">&times;</button>' +
+        '<h3 id="pat-opt-title">' + escapeHtml(productName) + '</h3>' +
+        '<p class="board-options-modal__subtitle">Customize your board</p>' +
+        '<span class="board-options-modal__price" id="pat-opt-price">' + formatPrice(basePrice) + '</span>' +
+
+        colorChoiceHtml +
+
+        // Juice Groove
+        '<div class="board-opt-group">' +
+          '<span class="board-opt-group__label">Juice Groove</span>' +
+          '<div class="board-opt-radios">' +
+            '<div class="board-opt-radio">' +
+              '<input type="radio" id="pat-juice-no" name="patJuiceGroove" value="no" checked>' +
+              '<label for="pat-juice-no">No</label>' +
+            '</div>' +
+            '<div class="board-opt-radio">' +
+              '<input type="radio" id="pat-juice-yes" name="patJuiceGroove" value="yes">' +
+              '<label for="pat-juice-yes">Yes<span class="opt-price">+$10</span></label>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
+        // Handles
+        '<div class="board-opt-group">' +
+          '<span class="board-opt-group__label">Handles ' + buildInfoBubble(HANDLES_INFO) + '</span>' +
+          '<div class="board-opt-radios">' +
+            '<div class="board-opt-radio">' +
+              '<input type="radio" id="pat-handles-no" name="patHandles" value="no" checked>' +
+              '<label for="pat-handles-no">No</label>' +
+            '</div>' +
+            '<div class="board-opt-radio">' +
+              '<input type="radio" id="pat-handles-yes" name="patHandles" value="yes">' +
+              '<label for="pat-handles-yes">Yes<span class="opt-price">+$10</span></label>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
+        // Feet
+        '<div class="board-opt-group">' +
+          '<span class="board-opt-group__label">Feet ' + buildInfoBubble(FEET_INFO) + '</span>' +
+          '<div class="board-opt-radios">' +
+            '<div class="board-opt-radio">' +
+              '<input type="radio" id="pat-feet-none" name="patFeet" value="none" checked>' +
+              '<label for="pat-feet-none">No Feet</label>' +
+            '</div>' +
+            '<div class="board-opt-radio">' +
+              '<input type="radio" id="pat-feet-basic" name="patFeet" value="basic">' +
+              '<label for="pat-feet-basic">Basic Feet<span class="opt-price">+$5</span></label>' +
+            '</div>' +
+            '<div class="board-opt-radio">' +
+              '<input type="radio" id="pat-feet-brass" name="patFeet" value="brass">' +
+              '<label for="pat-feet-brass">Brass Feet<span class="opt-price">+$20</span></label>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
+        // Engraving
+        '<div class="board-engraving-section">' +
+          '<div class="board-opt-group">' +
+            '<span class="board-opt-group__label">Custom Engraving ' + buildInfoBubble(ENGRAVING_INFO) + '</span>' +
+            '<div class="board-opt-radios">' +
+              '<div class="board-opt-radio">' +
+                '<input type="radio" id="pat-eng-no" name="patEngraving" value="no" checked>' +
+                '<label for="pat-eng-no">No</label>' +
+              '</div>' +
+              '<div class="board-opt-radio">' +
+                '<input type="radio" id="pat-eng-yes" name="patEngraving" value="yes">' +
+                '<label for="pat-eng-yes">Yes<span class="opt-price">+$20</span></label>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="board-engraving-fields" id="pat-eng-fields">' +
+            '<div class="board-opt-group">' +
+              '<span class="board-opt-group__label">Engraving Placement</span>' +
+              '<div class="board-opt-radios">' +
+                '<div class="board-opt-radio">' +
+                  '<input type="radio" id="pat-eng-front" name="patEngPlacement" value="front">' +
+                  '<label for="pat-eng-front">Front of Board</label>' +
+                '</div>' +
+                '<div class="board-opt-radio">' +
+                  '<input type="radio" id="pat-eng-back" name="patEngPlacement" value="back">' +
+                  '<label for="pat-eng-back">Back of Board</label>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+            '<div class="board-opt-group">' +
+              '<label class="board-opt-group__label" for="pat-eng-font">Font</label>' +
+              '<select id="pat-eng-font" class="board-opt-group__select">' +
+                '<option value="serif">Serif (Classic)</option>' +
+                '<option value="sans-serif">Sans-Serif (Modern)</option>' +
+                '<option value="script">Script (Elegant)</option>' +
+                '<option value="monospace">Monospace (Clean)</option>' +
+              '</select>' +
+            '</div>' +
+            '<div class="engraving-row">' +
+              '<div>' +
+                '<label for="pat-eng-top">Top Line</label>' +
+                '<input type="text" id="pat-eng-top" maxlength="40" placeholder="e.g. The Johnson Family">' +
+              '</div>' +
+              '<div>' +
+                '<label for="pat-eng-top-align">Align</label>' +
+                '<select id="pat-eng-top-align">' +
+                  '<option value="center">Center</option>' +
+                  '<option value="left">Left</option>' +
+                  '<option value="right">Right</option>' +
+                '</select>' +
+              '</div>' +
+            '</div>' +
+            '<div class="engraving-row">' +
+              '<div>' +
+                '<label for="pat-eng-mid">Middle Line</label>' +
+                '<input type="text" id="pat-eng-mid" maxlength="40" placeholder="e.g. Est. 2024">' +
+              '</div>' +
+              '<div>' +
+                '<label for="pat-eng-mid-align">Align</label>' +
+                '<select id="pat-eng-mid-align">' +
+                  '<option value="center">Center</option>' +
+                  '<option value="left">Left</option>' +
+                  '<option value="right">Right</option>' +
+                '</select>' +
+              '</div>' +
+            '</div>' +
+            '<div class="engraving-row">' +
+              '<div>' +
+                '<label for="pat-eng-bot">Bottom Line</label>' +
+                '<input type="text" id="pat-eng-bot" maxlength="40" placeholder="e.g. Made with Love">' +
+              '</div>' +
+              '<div>' +
+                '<label for="pat-eng-bot-align">Align</label>' +
+                '<select id="pat-eng-bot-align">' +
+                  '<option value="center">Center</option>' +
+                  '<option value="left">Left</option>' +
+                  '<option value="right">Right</option>' +
+                '</select>' +
+              '</div>' +
+            '</div>' +
+            '<div class="engraving-preview" id="pat-eng-preview">' +
+              '<div class="engraving-preview__line engraving-preview__line--empty" id="pat-prev-top">&nbsp;</div>' +
+              '<div class="engraving-preview__line engraving-preview__line--empty" id="pat-prev-mid">&nbsp;</div>' +
+              '<div class="engraving-preview__line engraving-preview__line--empty" id="pat-prev-bot">&nbsp;</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
+        '<div class="board-options-modal__actions">' +
+          '<button type="button" class="btn btn--outline" id="pat-opt-cancel">Cancel</button>' +
+          '<button type="button" class="btn btn--accent" id="pat-opt-add">Add to Cart</button>' +
+        '</div>' +
+      '</div>';
+
+    modal.innerHTML = dialogHtml;
+    document.body.appendChild(modal);
+    document.body.style.overflow = 'hidden';
+
+    var backdrop = modal.querySelector('.board-options-modal__backdrop');
+    var closeBtn = modal.querySelector('.board-options-modal__close');
+    var cancelBtn = document.getElementById('pat-opt-cancel');
+    var addBtn = document.getElementById('pat-opt-add');
+    var livePrice = document.getElementById('pat-opt-price');
+
+    // Engraving toggle
+    var engFields = document.getElementById('pat-eng-fields');
+    var engRadios = modal.querySelectorAll('input[name="patEngraving"]');
+    engRadios.forEach(function (r) {
+      r.addEventListener('change', function () {
+        if (r.value === 'yes') {
+          engFields.classList.add('board-engraving-fields--visible');
+        } else {
+          engFields.classList.remove('board-engraving-fields--visible');
+        }
+        updatePatPrice();
+      });
+    });
+
+    // Engraving preview
+    var patEngTopInput = document.getElementById('pat-eng-top');
+    var patEngMidInput = document.getElementById('pat-eng-mid');
+    var patEngBotInput = document.getElementById('pat-eng-bot');
+    var patEngTopAlign = document.getElementById('pat-eng-top-align');
+    var patEngMidAlign = document.getElementById('pat-eng-mid-align');
+    var patEngBotAlign = document.getElementById('pat-eng-bot-align');
+    var patEngFont = document.getElementById('pat-eng-font');
+    var patPrevTop = document.getElementById('pat-prev-top');
+    var patPrevMid = document.getElementById('pat-prev-mid');
+    var patPrevBot = document.getElementById('pat-prev-bot');
+    var patEngPreview = document.getElementById('pat-eng-preview');
+
+    var PAT_FONT_MAP = {
+      'serif': 'Georgia, "Times New Roman", serif',
+      'sans-serif': '"Inter", Arial, sans-serif',
+      'script': '"Brush Script MT", "Segoe Script", cursive',
+      'monospace': '"Courier New", Courier, monospace'
+    };
+
+    function updatePatPreview() {
+      updatePatPreviewLine(patPrevTop, patEngTopInput.value, patEngTopAlign.value);
+      updatePatPreviewLine(patPrevMid, patEngMidInput.value, patEngMidAlign.value);
+      updatePatPreviewLine(patPrevBot, patEngBotInput.value, patEngBotAlign.value);
+      patEngPreview.style.fontFamily = PAT_FONT_MAP[patEngFont.value] || '';
+    }
+
+    function updatePatPreviewLine(el, text, align) {
+      var t = text.trim();
+      if (t) {
+        el.textContent = t;
+        el.classList.remove('engraving-preview__line--empty');
+      } else {
+        el.innerHTML = '&nbsp;';
+        el.classList.add('engraving-preview__line--empty');
+      }
+      el.style.textAlign = align;
+    }
+
+    [patEngTopInput, patEngMidInput, patEngBotInput].forEach(function (inp) {
+      inp.addEventListener('input', updatePatPreview);
+    });
+    [patEngTopAlign, patEngMidAlign, patEngBotAlign, patEngFont].forEach(function (sel) {
+      sel.addEventListener('change', updatePatPreview);
+    });
+
+    // Price calculation
+    function calcPatPrice() {
+      var total = basePrice;
+      var juiceGroove = modal.querySelector('input[name="patJuiceGroove"]:checked');
+      if (juiceGroove && juiceGroove.value === 'yes') total += JUICE_GROOVE_PRICE;
+      var handles = modal.querySelector('input[name="patHandles"]:checked');
+      if (handles && handles.value === 'yes') total += HANDLE_PRICE;
+      var feet = modal.querySelector('input[name="patFeet"]:checked');
+      if (feet) {
+        if (feet.value === 'basic') total += BASIC_FEET_PRICE;
+        if (feet.value === 'brass') total += BRASS_FEET_PRICE;
+      }
+      var eng = modal.querySelector('input[name="patEngraving"]:checked');
+      if (eng && eng.value === 'yes') total += ENGRAVING_PRICE_OPT;
+      return total;
+    }
+
+    function updatePatPrice() {
+      livePrice.textContent = formatPrice(calcPatPrice());
+    }
+
+    modal.querySelectorAll('input[type="radio"]').forEach(function (r) {
+      r.addEventListener('change', updatePatPrice);
+    });
+
+    function cleanup() {
+      modal.remove();
+      document.body.style.overflow = '';
+    }
+
+    backdrop.addEventListener('click', cleanup);
+    closeBtn.addEventListener('click', cleanup);
+    cancelBtn.addEventListener('click', cleanup);
+    modal.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') cleanup();
+    });
+
+    addBtn.addEventListener('click', function () {
+      var options = {};
+
+      // Color choice
+      if (hasColorChoice) {
+        var colorVal = modal.querySelector('input[name="patColor"]:checked');
+        options.color = colorVal ? colorVal.value : 'Purple Heart';
+      }
+
+      var juiceGrooveVal = modal.querySelector('input[name="patJuiceGroove"]:checked').value;
+      var handlesVal = modal.querySelector('input[name="patHandles"]:checked').value;
+      var feetVal = modal.querySelector('input[name="patFeet"]:checked').value;
+      var engVal = modal.querySelector('input[name="patEngraving"]:checked').value;
+
+      options.juiceGroove = juiceGrooveVal === 'yes';
+      options.handles = handlesVal === 'yes';
+      options.feet = feetVal === 'none' ? null : (feetVal === 'basic' ? 'Basic' : 'Brass');
+      options.engravingLines = null;
+
+      if (engVal === 'yes') {
+        var engPlacement = modal.querySelector('input[name="patEngPlacement"]:checked');
+        if (!engPlacement) {
+          var placementLabels = modal.querySelectorAll('input[name="patEngPlacement"]');
+          placementLabels.forEach(function (r) {
+            var lbl = r.nextElementSibling;
+            if (lbl) lbl.classList.add('board-opt-error-radio');
+          });
+          showToast('Please select engraving placement (Front or Back)');
+          return;
+        }
+        var topText = patEngTopInput.value.trim();
+        var midText = patEngMidInput.value.trim();
+        var botText = patEngBotInput.value.trim();
+        if (!topText && !midText && !botText) {
+          showToast('Please enter at least one engraving line');
+          return;
+        }
+        options.engravingLines = {
+          placement: engPlacement.value,
+          top: topText || '',
+          topAlign: patEngTopAlign.value,
+          middle: midText || '',
+          middleAlign: patEngMidAlign.value,
+          bottom: botText || '',
+          bottomAlign: patEngBotAlign.value,
+          font: patEngFont.value
+        };
+      }
+
+      var finalPrice = calcPatPrice();
+      callback(options, finalPrice);
+      cleanup();
+    });
+
+    closeBtn.focus();
+  }
+
+  // ---- Pattern Board Options Click Handler ----
+
+  function initPatternBoardOptions() {
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.product-card__pattern-btn');
+      if (!btn) return;
+
+      var card = btn.closest('.product-card');
+      if (!card) return;
+
+      var id = card.getAttribute('data-product-id');
+      var name = card.getAttribute('data-product-name');
+      var price = parseInt(card.getAttribute('data-product-price'), 10);
+      var patternType = card.getAttribute('data-pattern-board');
+      var hasColorChoice = patternType === 'color';
+      var qtyInput = card.querySelector('.product-card__qty');
+      var qty = qtyInput ? parseInt(qtyInput.value, 10) : 1;
+      if (isNaN(qty) || qty < 1) qty = 1;
+      if (isNaN(price)) return;
+
+      showPatternBoardOptionsModal(name, price, qty, id, hasColorChoice, function (options, finalPrice) {
         addToCart(id, name, finalPrice, qty, undefined, options);
         updateCartBadge();
         showToast(qty + 'x ' + name + ' added to cart');
