@@ -4,6 +4,7 @@
 // ============================================
 
 var OWNER_EMAIL = 'orders@mitchs-hardwoods.com';
+var VIEW_ORDERS_KEY = 'mitchhardwoods2026';
 
 // ---- POST Handler (new orders from website) ----
 
@@ -27,10 +28,20 @@ function doPost(e) {
   }
 }
 
-// ---- GET Handler (confirm/deny links from email) ----
+// ---- GET Handler (confirm/deny/view links) ----
 
 function doGet(e) {
   var action = e.parameter.action;
+
+  // View confirmed orders dashboard
+  if (action === 'viewOrders') {
+    var key = e.parameter.key;
+    if (key !== VIEW_ORDERS_KEY) {
+      return HtmlService.createHtmlOutput(buildResultPage('Access Denied', 'Invalid access key.', 'warning'));
+    }
+    return HtmlService.createHtmlOutput(buildOrdersDashboard());
+  }
+
   var orderData = e.parameter.data;
 
   if (!orderData) {
@@ -139,6 +150,9 @@ function handleConfirmOrder(order) {
   var customerName = order.firstName + ' ' + order.lastName;
   var orderId = order.orderId;
 
+  // Store confirmed order
+  saveConfirmedOrder(order);
+
   var itemsText = order.items.join('\n');
 
   // Send confirmation email to customer
@@ -179,13 +193,122 @@ function handleConfirmOrder(order) {
     htmlBody: htmlBody
   });
 
-  return HtmlService.createHtmlOutput(buildResultPage('Order Confirmed!', 'Confirmation email sent to ' + customerEmail + '.', 'success'));
+  // Send confirmation copy to owner
+  var scriptUrl = ScriptApp.getService().getUrl();
+  var viewOrdersUrl = scriptUrl + '?action=viewOrders&key=' + VIEW_ORDERS_KEY;
+
+  MailApp.sendEmail({
+    to: OWNER_EMAIL,
+    subject: 'CONFIRMED: Order ' + orderId + ' — ' + customerName,
+    body: 'Order ' + orderId + ' has been confirmed.\n\nCustomer: ' + customerName + '\nEmail: ' + customerEmail + '\nItems: ' + order.items.join(', ') + '\nTotal: ' + order.total + '\n\nView all confirmed orders: ' + viewOrdersUrl,
+    htmlBody: '<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f0fdf0; padding: 32px; border-radius: 12px; border: 2px solid #5a9a5a;">' +
+      '<h2 style="color: #5a9a5a; margin-top: 0;">&#10004; Order Confirmed</h2>' +
+      '<p><strong>Order ID:</strong> ' + orderId + '</p>' +
+      '<p><strong>Customer:</strong> ' + customerName + '</p>' +
+      '<p><strong>Email:</strong> ' + customerEmail + '</p>' +
+      '<p><strong>Items:</strong> ' + order.items.join(', ') + '</p>' +
+      '<p><strong>Total:</strong> ' + order.total + '</p>' +
+      '<hr style="border: none; border-top: 1px solid #ccc; margin: 20px 0;">' +
+      '<p style="text-align: center;"><a href="' + viewOrdersUrl + '" style="display: inline-block; padding: 12px 28px; background-color: #c9a96e; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">View All Confirmed Orders</a></p>' +
+      '</div>'
+  });
+
+  return HtmlService.createHtmlOutput(buildResultPage('Order Confirmed!', 'Confirmation email sent to ' + customerEmail + '. Order saved to your records.', 'success'));
 }
 
 // ---- Deny Order ----
 
 function handleDenyOrder(order) {
   return HtmlService.createHtmlOutput(buildResultPage('Order Denied', 'Order ' + order.orderId + ' has been denied. No email was sent to the customer.', 'denied'));
+}
+
+// ---- Order Storage (PropertiesService) ----
+
+function saveConfirmedOrder(order) {
+  var store = PropertiesService.getScriptProperties();
+  var ordersJson = store.getProperty('confirmedOrders') || '[]';
+  var orders = JSON.parse(ordersJson);
+
+  order.confirmedAt = new Date().toISOString();
+  orders.push(order);
+
+  store.setProperty('confirmedOrders', JSON.stringify(orders));
+}
+
+function getConfirmedOrders() {
+  var store = PropertiesService.getScriptProperties();
+  var ordersJson = store.getProperty('confirmedOrders') || '[]';
+  return JSON.parse(ordersJson);
+}
+
+// ---- Confirmed Orders Dashboard ----
+
+function buildOrdersDashboard() {
+  var orders = getConfirmedOrders();
+
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">' +
+    '<title>Confirmed Orders | Mitch\'s Hardwoods</title>' +
+    '<style>' +
+    '*{box-sizing:border-box;margin:0;padding:0;}' +
+    'body{font-family:Arial,sans-serif;background:#0a0a0a;color:#fff;padding:24px;}' +
+    '.header{max-width:1000px;margin:0 auto 32px;text-align:center;}' +
+    '.header h1{font-size:28px;margin-bottom:8px;color:#c9a96e;}' +
+    '.header p{color:rgba(255,255,255,0.5);font-size:14px;}' +
+    '.orders{max-width:1000px;margin:0 auto;}' +
+    '.order-card{background:#141414;border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:24px;margin-bottom:16px;}' +
+    '.order-card__header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px;}' +
+    '.order-card__id{font-size:18px;font-weight:bold;color:#c9a96e;}' +
+    '.order-card__date{font-size:13px;color:rgba(255,255,255,0.4);}' +
+    '.order-card__grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 24px;margin-bottom:16px;}' +
+    '.order-card__label{font-size:12px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.5px;}' +
+    '.order-card__value{font-size:14px;color:#fff;margin-top:2px;}' +
+    '.order-card__value a{color:#c9a96e;text-decoration:none;}' +
+    '.order-card__items{border-top:1px solid rgba(255,255,255,0.1);padding-top:12px;}' +
+    '.order-card__items ul{list-style:none;padding:0;}' +
+    '.order-card__items li{padding:4px 0;color:rgba(255,255,255,0.7);font-size:14px;}' +
+    '.order-card__items li:before{content:"• ";color:#c9a96e;}' +
+    '.order-card__total{font-size:20px;font-weight:bold;color:#c9a96e;margin-top:12px;}' +
+    '.empty{text-align:center;padding:64px 24px;color:rgba(255,255,255,0.4);}' +
+    '.badge{display:inline-block;background:#5a9a5a;color:#fff;font-size:11px;padding:3px 10px;border-radius:20px;font-weight:bold;text-transform:uppercase;}' +
+    '@media(max-width:600px){.order-card__grid{grid-template-columns:1fr;}}' +
+    '</style></head><body>' +
+    '<div class="header"><h1>Confirmed Orders</h1>' +
+    '<p>' + orders.length + ' order' + (orders.length !== 1 ? 's' : '') + ' confirmed</p></div>' +
+    '<div class="orders">';
+
+  if (orders.length === 0) {
+    html += '<div class="empty"><p>No confirmed orders yet.</p></div>';
+  } else {
+    // Show newest first
+    for (var i = orders.length - 1; i >= 0; i--) {
+      var o = orders[i];
+      var confirmedDate = o.confirmedAt ? new Date(o.confirmedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'N/A';
+
+      html += '<div class="order-card">' +
+        '<div class="order-card__header">' +
+        '<span class="order-card__id">' + o.orderId + '</span>' +
+        '<span class="badge">Confirmed</span>' +
+        '</div>' +
+        '<div class="order-card__grid">' +
+        '<div><div class="order-card__label">Customer</div><div class="order-card__value">' + o.firstName + ' ' + o.lastName + '</div></div>' +
+        '<div><div class="order-card__label">Email</div><div class="order-card__value"><a href="mailto:' + o.email + '">' + o.email + '</a></div></div>' +
+        '<div><div class="order-card__label">Phone</div><div class="order-card__value"><a href="tel:' + o.phone + '">' + o.phone + '</a></div></div>' +
+        '<div><div class="order-card__label">Preferred Contact</div><div class="order-card__value">' + o.contactMethod + '</div></div>' +
+        '<div><div class="order-card__label">Order Date</div><div class="order-card__value">' + (o.date || 'N/A') + '</div></div>' +
+        '<div><div class="order-card__label">Confirmed</div><div class="order-card__value">' + confirmedDate + '</div></div>' +
+        '</div>' +
+        '<div class="order-card__items"><div class="order-card__label" style="margin-bottom:8px;">Items</div><ul>';
+      for (var j = 0; j < o.items.length; j++) {
+        html += '<li>' + o.items[j] + '</li>';
+      }
+      html += '</ul></div>' +
+        '<div class="order-card__total">Total: ' + o.total + '</div>' +
+        '</div>';
+    }
+  }
+
+  html += '</div></body></html>';
+  return html;
 }
 
 // ---- Test Function (run this to authorize) ----
