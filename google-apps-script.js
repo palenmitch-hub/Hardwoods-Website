@@ -4,36 +4,6 @@
 // ============================================
 
 var OWNER_EMAIL = 'orders@mitchs-hardwoods.com';
-var SPREADSHEET_NAME = "Mitchs Hardwoods Orders";
-
-// ---- Spreadsheet Helpers ----
-
-function getOrCreateSpreadsheet() {
-  var files = DriveApp.getFilesByName(SPREADSHEET_NAME);
-  if (files.hasNext()) {
-    return SpreadsheetApp.open(files.next());
-  }
-  var ss = SpreadsheetApp.create(SPREADSHEET_NAME);
-  var pending = ss.getActiveSheet();
-  pending.setName('Pending Orders');
-  pending.appendRow(['Order ID', 'Date', 'First Name', 'Last Name', 'Email', 'Phone', 'Contact Method', 'Items', 'Total', 'Status']);
-  var confirmed = ss.insertSheet('Confirmed Orders');
-  confirmed.appendRow(['Order ID', 'Date', 'First Name', 'Last Name', 'Email', 'Phone', 'Contact Method', 'Items', 'Total', 'Confirmed At']);
-  return ss;
-}
-
-function getSheet(name) {
-  var ss = getOrCreateSpreadsheet();
-  return ss.getSheetByName(name);
-}
-
-function findOrderRow(sheet, orderId) {
-  var data = sheet.getDataRange().getValues();
-  for (var i = 1; i < data.length; i++) {
-    if (data[i][0] === orderId) return i + 1;
-  }
-  return -1;
-}
 
 // ---- POST Handler (new orders from website) ----
 
@@ -55,44 +25,54 @@ function doPost(e) {
 
 function doGet(e) {
   var action = e.parameter.action;
-  var orderId = e.parameter.orderId;
+  var orderData = e.parameter.data;
 
-  if (action === 'confirm' && orderId) {
-    return handleConfirmOrder(orderId);
-  } else if (action === 'deny' && orderId) {
-    return handleDenyOrder(orderId);
+  if (!orderData) {
+    return HtmlService.createHtmlOutput(buildResultPage('Invalid Link', 'This link is not valid.', 'warning'));
   }
 
-  return HtmlService.createHtmlOutput(buildResultPage('Invalid Request', 'This link is not valid.', 'warning'));
+  try {
+    var order = JSON.parse(Utilities.newBlob(Utilities.base64Decode(orderData)).getDataAsString());
+  } catch (err) {
+    return HtmlService.createHtmlOutput(buildResultPage('Invalid Link', 'Could not read order data.', 'warning'));
+  }
+
+  if (action === 'confirm') {
+    return handleConfirmOrder(order);
+  } else if (action === 'deny') {
+    return handleDenyOrder(order);
+  }
+
+  return HtmlService.createHtmlOutput(buildResultPage('Invalid Request', 'Unknown action.', 'warning'));
 }
 
 // ---- Submit New Order ----
 
 function handleSubmitOrder(data) {
-  var sheet = getSheet('Pending Orders');
   var orderId = data.orderId;
 
-  sheet.appendRow([
-    orderId,
-    data.date,
-    data.firstName,
-    data.lastName,
-    data.email,
-    data.phone,
-    data.contactMethod,
-    data.items.join('\n'),
-    data.total,
-    'Pending'
-  ]);
+  // Encode order data for confirm/deny links
+  var orderPayload = {
+    orderId: orderId,
+    firstName: data.firstName,
+    lastName: data.lastName,
+    email: data.email,
+    phone: data.phone,
+    contactMethod: data.contactMethod,
+    items: data.items,
+    total: data.total,
+    date: data.date
+  };
+  var encoded = Utilities.base64Encode(JSON.stringify(orderPayload));
 
   var scriptUrl = ScriptApp.getService().getUrl();
-  var confirmUrl = scriptUrl + '?action=confirm&orderId=' + encodeURIComponent(orderId);
-  var denyUrl = scriptUrl + '?action=deny&orderId=' + encodeURIComponent(orderId);
+  var confirmUrl = scriptUrl + '?action=confirm&data=' + encoded;
+  var denyUrl = scriptUrl + '?action=deny&data=' + encoded;
 
   // Plain text body
   var itemsList = '';
   for (var i = 0; i < data.items.length; i++) {
-    itemsList += '  • ' + data.items[i] + '\n';
+    itemsList += '  - ' + data.items[i] + '\n';
   }
   var body = 'New Order Received!\n\n' +
     'Order ID: ' + orderId + '\n' +
@@ -135,7 +115,10 @@ function handleSubmitOrder(data) {
     '<a href="' + denyUrl + '" style="display: inline-block; padding: 14px 36px; background-color: #ef4444; color: white; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: bold;">&#10006; Deny Order</a>' +
     '</div></div>';
 
-  GmailApp.sendEmail(OWNER_EMAIL, 'New Order ' + orderId + ' — ' + data.firstName + ' ' + data.lastName, body, {
+  MailApp.sendEmail({
+    to: OWNER_EMAIL,
+    subject: 'New Order ' + orderId + ' — ' + data.firstName + ' ' + data.lastName,
+    body: body,
     htmlBody: htmlBody
   });
 
@@ -145,41 +128,20 @@ function handleSubmitOrder(data) {
 
 // ---- Confirm Order ----
 
-function handleConfirmOrder(orderId) {
-  var sheet = getSheet('Pending Orders');
-  var row = findOrderRow(sheet, orderId);
+function handleConfirmOrder(order) {
+  var customerEmail = order.email;
+  var customerName = order.firstName + ' ' + order.lastName;
+  var orderId = order.orderId;
 
-  if (row === -1) {
-    return HtmlService.createHtmlOutput(buildResultPage('Order Not Found', 'This order may have already been processed or does not exist.', 'warning'));
-  }
-
-  var data = sheet.getRange(row, 1, 1, 10).getValues()[0];
-
-  if (data[9] === 'Confirmed') {
-    return HtmlService.createHtmlOutput(buildResultPage('Already Confirmed', 'This order was already confirmed.', 'info'));
-  }
-
-  var customerEmail = data[4];
-  var customerName = data[2] + ' ' + data[3];
-  var items = data[7];
-  var total = data[8];
-
-  // Update status
-  sheet.getRange(row, 10).setValue('Confirmed');
-
-  // Copy to Confirmed Orders sheet
-  var confirmedSheet = getSheet('Confirmed Orders');
-  confirmedSheet.appendRow([
-    data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8], new Date().toISOString()
-  ]);
+  var itemsText = order.items.join('\n');
 
   // Send confirmation email to customer
   var subject = 'Order Confirmed — ' + orderId + ' | Mitch\'s Hardwoods';
   var body = 'Hi ' + customerName + ',\n\n' +
     'Great news! Your order has been confirmed.\n\n' +
     'Order ID: ' + orderId + '\n\n' +
-    'Items:\n' + items + '\n\n' +
-    'Total: ' + total + '\n\n' +
+    'Items:\n' + itemsText + '\n\n' +
+    'Total: ' + order.total + '\n\n' +
     'We\'ll be in touch soon regarding payment and delivery details.\n\n' +
     'Thank you for choosing Mitch\'s Hardwoods!\n\n' +
     '— Mitch Palen';
@@ -192,38 +154,42 @@ function handleConfirmOrder(orderId) {
     '<p><strong>Order ID:</strong> ' + orderId + '</p>' +
     '<hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">' +
     '<h3 style="color: #333;">Your Items</h3>' +
-    '<pre style="background: #fff; padding: 16px; border-radius: 8px; border: 1px solid #eee; white-space: pre-wrap; font-size: 14px;">' + items + '</pre>' +
-    '<p style="font-size: 20px; font-weight: bold; color: #c9a96e;">Total: ' + total + '</p>' +
+    '<ul style="padding-left: 20px; color: #444;">';
+  for (var i = 0; i < order.items.length; i++) {
+    htmlBody += '<li style="padding: 4px 0;">' + order.items[i] + '</li>';
+  }
+  htmlBody += '</ul>' +
+    '<p style="font-size: 20px; font-weight: bold; color: #c9a96e;">Total: ' + order.total + '</p>' +
     '<hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">' +
     '<p>We\'ll be in touch soon regarding payment and delivery details.</p>' +
     '<p>Thank you for choosing Mitch\'s Hardwoods!</p>' +
     '<p style="color: #888;">— Mitch Palen</p>' +
     '</div>';
 
-  GmailApp.sendEmail(customerEmail, subject, body, { htmlBody: htmlBody });
+  MailApp.sendEmail({
+    to: customerEmail,
+    subject: subject,
+    body: body,
+    htmlBody: htmlBody
+  });
 
   return HtmlService.createHtmlOutput(buildResultPage('Order Confirmed!', 'Confirmation email sent to ' + customerEmail + '.', 'success'));
 }
 
 // ---- Deny Order ----
 
-function handleDenyOrder(orderId) {
-  var sheet = getSheet('Pending Orders');
-  var row = findOrderRow(sheet, orderId);
+function handleDenyOrder(order) {
+  return HtmlService.createHtmlOutput(buildResultPage('Order Denied', 'Order ' + order.orderId + ' has been denied. No email was sent to the customer.', 'denied'));
+}
 
-  if (row === -1) {
-    return HtmlService.createHtmlOutput(buildResultPage('Order Not Found', 'This order may have already been processed or does not exist.', 'warning'));
-  }
+// ---- Test Function (run this to authorize) ----
 
-  var data = sheet.getRange(row, 1, 1, 10).getValues()[0];
-
-  if (data[9] === 'Denied') {
-    return HtmlService.createHtmlOutput(buildResultPage('Already Denied', 'This order was already denied.', 'info'));
-  }
-
-  sheet.getRange(row, 10).setValue('Denied');
-
-  return HtmlService.createHtmlOutput(buildResultPage('Order Denied', 'Order ' + orderId + ' has been denied. No email was sent to the customer.', 'denied'));
+function testSendEmail() {
+  MailApp.sendEmail({
+    to: OWNER_EMAIL,
+    subject: 'Test - Mitch\'s Hardwoods Order System',
+    body: 'If you received this email, the order system is working!'
+  });
 }
 
 // ---- Result Page Template ----
