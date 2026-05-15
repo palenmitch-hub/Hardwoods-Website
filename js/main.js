@@ -8,7 +8,7 @@
 
   // ---- Constants ----
   var CART_KEY = 'mitchs-cart';
-  var FORMSPREE_QUOTE_ID = '{FORMSPREE_QUOTE_ID}';
+  var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxecanGI5MkQWiMAk8nftuzyy76tzPu9QuA6quQ-qkJHj2zb6HRfvHfouatM07Njl7Lyg/exec';
 
   // ---- Cart Module (T011) ----
 
@@ -408,12 +408,20 @@
     }, 2500);
   }
 
-  // ---- Quote Request (T015) ----
+  // ---- Order Configuration ----
 
-  function submitQuoteRequest() {
-    var cart = getCart();
-    if (cart.length === 0) return;
+  // ---- Order ID Generator ----
+  function generateOrderId() {
+    var now = new Date();
+    var datePart = now.getFullYear().toString() +
+      String(now.getMonth() + 1).padStart(2, '0') +
+      String(now.getDate()).padStart(2, '0');
+    var rand = Math.random().toString(36).substring(2, 8).toUpperCase();
+    return 'MH-' + datePart + '-' + rand;
+  }
 
+  // ---- Build Order Summary ----
+  function buildOrderSummary(cart) {
     var items = [];
     var total = 0;
     for (var i = 0; i < cart.length; i++) {
@@ -440,51 +448,229 @@
       items.push(desc);
       total += item.price * item.qty;
     }
+    return { items: items, total: total };
+  }
 
-    var now = new Date();
-    var dateStr = now.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+  // ---- Order Form Modal (T015) ----
 
-    var data = {
-      cart_items: items.join(', '),
-      cart_total: formatPrice(total),
-      _subject: 'New Quote Request - ' + dateStr
-    };
+  function showOrderFormModal() {
+    var cart = getCart();
+    if (cart.length === 0) return;
 
-    var quoteBtn = document.querySelector('.cart-panel__quote-btn');
-    if (quoteBtn) {
-      quoteBtn.disabled = true;
-      quoteBtn.textContent = 'Sending...';
+    var old = document.getElementById('order-form-modal');
+    if (old) old.remove();
+
+    var modal = document.createElement('div');
+    modal.id = 'order-form-modal';
+    modal.className = 'order-form-modal';
+
+    modal.innerHTML =
+      '<div class="order-form-modal__backdrop"></div>' +
+      '<div class="order-form-modal__dialog" role="dialog" aria-labelledby="order-form-title" aria-modal="true">' +
+        '<button type="button" class="order-form-modal__close" aria-label="Close">&times;</button>' +
+        '<h3 id="order-form-title">Complete Your Order</h3>' +
+        '<p class="order-form-modal__subtitle">Please provide your contact information so we can finalize your order.</p>' +
+        '<form id="order-contact-form" novalidate>' +
+          '<div class="order-form__row">' +
+            '<div class="order-form__field">' +
+              '<label for="order-first-name">First Name <span class="required">*</span></label>' +
+              '<input type="text" id="order-first-name" name="firstName" required autocomplete="given-name">' +
+              '<span class="order-form__error" id="order-fname-error">First name is required</span>' +
+            '</div>' +
+            '<div class="order-form__field">' +
+              '<label for="order-last-name">Last Name <span class="required">*</span></label>' +
+              '<input type="text" id="order-last-name" name="lastName" required autocomplete="family-name">' +
+              '<span class="order-form__error" id="order-lname-error">Last name is required</span>' +
+            '</div>' +
+          '</div>' +
+          '<div class="order-form__field">' +
+            '<label for="order-email">Email Address <span class="required">*</span></label>' +
+            '<input type="email" id="order-email" name="email" required autocomplete="email">' +
+            '<span class="order-form__error" id="order-email-error">Valid email is required</span>' +
+          '</div>' +
+          '<div class="order-form__field">' +
+            '<label for="order-phone">Phone Number <span class="required">*</span></label>' +
+            '<input type="tel" id="order-phone" name="phone" required autocomplete="tel">' +
+            '<span class="order-form__error" id="order-phone-error">Phone number is required</span>' +
+          '</div>' +
+          '<fieldset class="order-form__fieldset">' +
+            '<legend>Preferred Contact Method <span class="required">*</span></legend>' +
+            '<div class="order-form__radio-group">' +
+              '<label class="order-form__radio"><input type="radio" name="contactMethod" value="email" checked> Email</label>' +
+              '<label class="order-form__radio"><input type="radio" name="contactMethod" value="phone"> Phone Call</label>' +
+              '<label class="order-form__radio"><input type="radio" name="contactMethod" value="text"> Text</label>' +
+            '</div>' +
+          '</fieldset>' +
+          '<div class="order-form__actions">' +
+            '<button type="button" class="btn btn--outline" id="order-form-cancel">Cancel</button>' +
+            '<button type="submit" class="btn btn--accent" id="order-form-submit">Submit Order</button>' +
+          '</div>' +
+        '</form>' +
+      '</div>';
+
+    document.body.appendChild(modal);
+    document.body.style.overflow = 'hidden';
+
+    var backdrop = modal.querySelector('.order-form-modal__backdrop');
+    var closeBtn = modal.querySelector('.order-form-modal__close');
+    var cancelBtn = document.getElementById('order-form-cancel');
+    var form = document.getElementById('order-contact-form');
+
+    function cleanup() {
+      modal.remove();
+      document.body.style.overflow = '';
     }
 
-    fetch('https://formspree.io/f/' + FORMSPREE_QUOTE_ID, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify(data)
-    })
-      .then(function (response) {
-        if (response.ok) {
+    backdrop.addEventListener('click', cleanup);
+    closeBtn.addEventListener('click', cleanup);
+    cancelBtn.addEventListener('click', cleanup);
+    modal.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') cleanup();
+    });
+
+    // Clear error on input
+    form.querySelectorAll('input').forEach(function (inp) {
+      inp.addEventListener('input', function () {
+        inp.classList.remove('order-form__input--error');
+        var errEl = inp.closest('.order-form__field');
+        if (errEl) {
+          var errSpan = errEl.querySelector('.order-form__error');
+          if (errSpan) errSpan.classList.remove('order-form__error--visible');
+        }
+      });
+    });
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+
+      // Validate
+      var valid = true;
+      var firstName = document.getElementById('order-first-name');
+      var lastName = document.getElementById('order-last-name');
+      var email = document.getElementById('order-email');
+      var phone = document.getElementById('order-phone');
+
+      if (!firstName.value.trim()) {
+        firstName.classList.add('order-form__input--error');
+        document.getElementById('order-fname-error').classList.add('order-form__error--visible');
+        valid = false;
+      }
+      if (!lastName.value.trim()) {
+        lastName.classList.add('order-form__input--error');
+        document.getElementById('order-lname-error').classList.add('order-form__error--visible');
+        valid = false;
+      }
+      if (!email.value.trim() || !isValidEmail(email.value)) {
+        email.classList.add('order-form__input--error');
+        document.getElementById('order-email-error').classList.add('order-form__error--visible');
+        valid = false;
+      }
+      if (!phone.value.trim()) {
+        phone.classList.add('order-form__input--error');
+        document.getElementById('order-phone-error').classList.add('order-form__error--visible');
+        valid = false;
+      }
+      if (!valid) return;
+
+      var contactMethod = form.querySelector('input[name="contactMethod"]:checked').value;
+      var orderId = generateOrderId();
+      var summary = buildOrderSummary(cart);
+
+      var now = new Date();
+      var dateStr = now.toLocaleDateString('en-US', {
+        year: 'numeric', month: 'long', day: 'numeric',
+        hour: 'numeric', minute: '2-digit'
+      });
+
+      // Build order data for Apps Script
+      var orderData = {
+        action: 'submitOrder',
+        orderId: orderId,
+        firstName: firstName.value.trim(),
+        lastName: lastName.value.trim(),
+        email: email.value.trim(),
+        phone: phone.value.trim(),
+        contactMethod: contactMethod,
+        items: summary.items,
+        total: formatPrice(summary.total),
+        date: dateStr
+      };
+
+      var submitBtn = document.getElementById('order-form-submit');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Sending...';
+      }
+
+      // Send order to Google Apps Script
+      fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(orderData)
+      })
+        .then(function () {
+          // no-cors returns opaque response, so we can't read it
+          // but if fetch didn't throw, the request was sent successfully
           clearCart();
           updateCartBadge();
           renderCartPanel();
-          showToast('Quote request sent! I\'ll be in touch.');
-          setTimeout(closeCartPanel, 1500);
-        } else {
-          showToast('Something went wrong. Please try again.');
-        }
-      })
-      .catch(function () {
-        showToast('Network error. Please try again.');
-      })
-      .finally(function () {
-        if (quoteBtn) {
-          quoteBtn.disabled = false;
-          quoteBtn.textContent = 'Request Quote';
-        }
-      });
+          cleanup();
+          closeCartPanel();
+          showOrderSuccessModal();
+        })
+        .catch(function (err) {
+          console.error('Order submission error:', err);
+          showToast('Something went wrong sending your order. Please try again.');
+        })
+        .finally(function () {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Submit Order';
+          }
+        });
+    });
+
+    document.getElementById('order-first-name').focus();
+  }
+
+  // ---- Order Success Modal ----
+
+  function showOrderSuccessModal() {
+    var old = document.getElementById('order-success-modal');
+    if (old) old.remove();
+
+    var modal = document.createElement('div');
+    modal.id = 'order-success-modal';
+    modal.className = 'order-form-modal';
+
+    modal.innerHTML =
+      '<div class="order-form-modal__backdrop"></div>' +
+      '<div class="order-form-modal__dialog order-form-modal__dialog--success" role="dialog" aria-labelledby="order-success-title" aria-modal="true">' +
+        '<div class="order-success__icon">&#10003;</div>' +
+        '<h3 id="order-success-title">Order Submitted!</h3>' +
+        '<p class="order-success__message">Thank you for your order! <strong>Mitch Palen</strong> will be in contact with you soon to verify the order and collect payment.</p>' +
+        '<button type="button" class="btn btn--accent order-success__close-btn" id="order-success-close">Got it!</button>' +
+      '</div>';
+
+    document.body.appendChild(modal);
+    document.body.style.overflow = 'hidden';
+
+    var backdrop = modal.querySelector('.order-form-modal__backdrop');
+    var closeBtn = document.getElementById('order-success-close');
+
+    function cleanup() {
+      modal.remove();
+      document.body.style.overflow = '';
+    }
+
+    backdrop.addEventListener('click', cleanup);
+    closeBtn.addEventListener('click', cleanup);
+    modal.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') cleanup();
+    });
+
+    closeBtn.focus();
   }
 
   // ---- Custom Order Form Validation (T031) ----
@@ -1623,12 +1809,12 @@
       }
     });
 
-    // Quote request button
+    // Submit Order button
     var quoteBtn = document.querySelector('.cart-panel__quote-btn');
     if (quoteBtn) {
       quoteBtn.addEventListener('click', function (e) {
         e.preventDefault();
-        submitQuoteRequest();
+        showOrderFormModal();
       });
     }
 
