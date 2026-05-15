@@ -9,7 +9,13 @@ var OWNER_EMAIL = 'orders@mitchs-hardwoods.com';
 
 function doPost(e) {
   try {
-    var data = JSON.parse(e.postData.contents);
+    // Support both JSON body and form-encoded payload
+    var data;
+    if (e.parameter && e.parameter.payload) {
+      data = JSON.parse(e.parameter.payload);
+    } else {
+      data = JSON.parse(e.postData.contents);
+    }
     if (data.action === 'submitOrder') {
       return handleSubmitOrder(data);
     }

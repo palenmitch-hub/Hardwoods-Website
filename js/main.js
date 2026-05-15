@@ -602,33 +602,46 @@
         submitBtn.textContent = 'Sending...';
       }
 
-      // Send order to Google Apps Script
-      fetch(APPS_SCRIPT_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify(orderData)
-      })
-        .then(function () {
-          // no-cors returns opaque response, so we can't read it
-          // but if fetch didn't throw, the request was sent successfully
-          clearCart();
-          updateCartBadge();
-          renderCartPanel();
-          cleanup();
-          closeCartPanel();
-          showOrderSuccessModal();
-        })
-        .catch(function (err) {
-          console.error('Order submission error:', err);
-          showToast('Something went wrong sending your order. Please try again.');
-        })
-        .finally(function () {
-          if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Submit Order';
-          }
-        });
+      // Send order to Google Apps Script via hidden form + iframe
+      // (fetch no-cors loses POST body on Google's 302 redirect)
+      var iframeName = 'order-submit-' + Date.now();
+      var hiddenIframe = document.createElement('iframe');
+      hiddenIframe.name = iframeName;
+      hiddenIframe.style.display = 'none';
+      document.body.appendChild(hiddenIframe);
+
+      var hiddenForm = document.createElement('form');
+      hiddenForm.method = 'POST';
+      hiddenForm.action = APPS_SCRIPT_URL;
+      hiddenForm.target = iframeName;
+      hiddenForm.style.display = 'none';
+
+      var hiddenInput = document.createElement('input');
+      hiddenInput.type = 'hidden';
+      hiddenInput.name = 'payload';
+      hiddenInput.value = JSON.stringify(orderData);
+      hiddenForm.appendChild(hiddenInput);
+
+      document.body.appendChild(hiddenForm);
+      hiddenForm.submit();
+
+      // Clean up after submission
+      setTimeout(function () {
+        hiddenForm.remove();
+        hiddenIframe.remove();
+      }, 10000);
+
+      // Show success immediately (fire-and-forget)
+      clearCart();
+      updateCartBadge();
+      renderCartPanel();
+      cleanup();
+      closeCartPanel();
+      showOrderSuccessModal();
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit Order';
+      }
     });
 
     document.getElementById('order-first-name').focus();
