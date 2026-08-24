@@ -552,7 +552,81 @@ p {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  cursor: zoom-in;
   transition: transform var(--transition-slow);
+}
+
+#chairs-grid .product-card__image img {
+  object-fit: contain;
+}
+
+.product-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.product-lightbox--open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.product-lightbox__img {
+  max-width: 90vw;
+  max-height: 85vh;
+  object-fit: contain;
+  border-radius: var(--border-radius-lg);
+  box-shadow: 0 8px 48px rgba(0, 0, 0, 0.6);
+  cursor: zoom-out;
+}
+
+.product-lightbox__close,
+.product-lightbox__prev,
+.product-lightbox__next {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: var(--color-white);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.product-lightbox__close {
+  top: var(--space-lg);
+  right: var(--space-lg);
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  font-size: 2.5rem;
+}
+
+.product-lightbox__prev,
+.product-lightbox__next {
+  top: 50%;
+  transform: translateY(-50%);
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  font-size: 2.5rem;
+}
+
+.product-lightbox__prev { left: var(--space-lg); }
+.product-lightbox__next { right: var(--space-lg); }
+
+.product-lightbox__close:hover,
+.product-lightbox__prev:hover,
+.product-lightbox__next:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .product-card:hover .product-card__image img {
@@ -564,12 +638,14 @@ p {
   position: absolute;
   inset: 0;
   opacity: 0;
+  pointer-events: none;
   transition: opacity 0.4s ease;
 }
 
 .product-carousel .product-carousel__slide--active {
   position: relative;
   opacity: 1;
+  pointer-events: auto;
 }
 
 .product-carousel__prev,
@@ -1055,7 +1131,7 @@ p {
 .hero__logo {
   display: block;
   margin: 0 auto var(--space-lg);
-  height: clamp(120px, 22vw, 220px);
+  height: clamp(220px, 40vw, 420px);
   width: auto;
   filter: drop-shadow(0 2px 12px rgba(0, 0, 0, 0.5));
 }
