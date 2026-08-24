@@ -1943,6 +1943,7 @@
 
     var HANDLES_INFO = 'These are cutout from the bottom of the board to make it easier to pick up, these are NOT physical handles that are attached or added on.';
     var FEET_INFO = 'Basic feet are just small black ruberized feet and the Brass Feet are actual metal (brass) feet with a rubber O ring inlayed that adds another level of beauty and function.';
+    var JUICE_GROOVE_INFO = 'A juice groove is a shallow channel around the edge of the board that catches liquids from foods such as meat, fruit, and vegetables.';
     var ENGRAVING_INFO = 'Choose your font, type out your message, and choose where on the board you would like it! Feel free to use multiple levels and alignments to make it your own!';
     var SET_INFO = 'Choose this option to add a second matching board, this will be smaller and thinner with no juice groove, perfect to pull out for smaller or quick tasks!';
 
@@ -2044,7 +2045,7 @@
 
         // Juice Groove
         '<div class="board-opt-group">' +
-          '<span class="board-opt-group__label">Juice Groove</span>' +
+          '<span class="board-opt-group__label">Juice Groove ' + buildInfoBubble(JUICE_GROOVE_INFO) + '</span>' +
           '<div class="board-opt-radios">' +
             '<div class="board-opt-radio">' +
               '<input type="radio" id="opt-juice-no" name="juiceGroove" value="no" checked>' +
@@ -2719,6 +2720,7 @@
 
     var HANDLES_INFO = 'These are cutout from the bottom of the board to make it easier to pick up, these are NOT physical handles that are attached or added on.';
     var FEET_INFO = 'Basic feet are just small black ruberized feet and the Brass Feet are actual metal (brass) feet with a rubber O ring inlayed that adds another level of beauty and function.';
+    var JUICE_GROOVE_INFO = 'A juice groove is a shallow channel around the edge of the board that catches liquids from foods such as meat, fruit, and vegetables.';
     var ENGRAVING_INFO = 'Choose your font, type out your message, and choose where on the board you would like it! Feel free to use multiple levels and alignments to make it your own!';
 
     // Color choice section (only for Tight Weave and Large Weave)
@@ -2760,7 +2762,7 @@
 
         // Juice Groove
         '<div class="board-opt-group">' +
-          '<span class="board-opt-group__label">Juice Groove</span>' +
+          '<span class="board-opt-group__label">Juice Groove ' + buildInfoBubble(JUICE_GROOVE_INFO) + '</span>' +
           '<div class="board-opt-radios">' +
             '<div class="board-opt-radio">' +
               '<input type="radio" id="pat-juice-no" name="patJuiceGroove" value="no" checked>' +
