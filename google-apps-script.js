@@ -9,6 +9,7 @@ var INVENTORY_EMAIL = 'inventory@mitchs-hardwoods.com';
 var INVENTORY_LABEL_NEW = 'MitchHardwoods/Inventory/New';
 var INVENTORY_LABEL_PROCESSED = 'MitchHardwoods/Inventory/Processed';
 var INVENTORY_LABEL_ERROR = 'MitchHardwoods/Inventory/Error';
+var INVENTORY_HISTORY_DEFAULT_KEY = 'inventory-history-2026';
 
 // ---- POST Handler (new orders from website) ----
 
@@ -60,6 +61,26 @@ function doGet(e) {
       return HtmlService.createHtmlOutput(buildResultPage('Access Denied', 'Invalid access key.', 'warning'));
     }
     return HtmlService.createHtmlOutput(buildOrdersDashboard());
+  }
+
+  // View inventory history dashboard
+  if (action === 'viewInventoryHistory') {
+    var historyKey = e.parameter.key;
+    if (historyKey !== getInventoryHistoryAccessKey_()) {
+      return HtmlService.createHtmlOutput(buildResultPage('Access Denied', 'Invalid access key.', 'warning'));
+    }
+    return HtmlService.createHtmlOutput(buildInventoryHistoryDashboard(historyKey));
+  }
+
+  // Export inventory history as CSV
+  if (action === 'exportInventoryHistoryCsv') {
+    var csvKey = e.parameter.key;
+    if (csvKey !== getInventoryHistoryAccessKey_()) {
+      return ContentService.createTextOutput('Unauthorized')
+        .setMimeType(ContentService.MimeType.TEXT);
+    }
+    return ContentService.createTextOutput(buildInventoryHistoryCsv())
+      .setMimeType(ContentService.MimeType.CSV);
   }
 
   var orderData = e.parameter.data;
@@ -296,6 +317,9 @@ function processInventoryInbox() {
       var actionSummary = '';
 
       if (parsed) {
+        var productAssignment = resolveInventoryProductNumber_(parsed, github);
+        parsed.productNum = productAssignment.productNum;
+
         var imageBlobs = getImageAttachments(message);
         if (!imageBlobs || imageBlobs.length === 0) {
           throw new Error('No image attachment found. Attach at least one JPG, PNG, or WEBP image.');
@@ -320,36 +344,59 @@ function processInventoryInbox() {
         actionSummary =
           'Inventory email processed successfully.\n\n' +
           'Action: Add / Update Board\n' +
+          'Product #: ' + parsed.productNum + (productAssignment.wasAutoAssigned ? ' (auto-assigned)' : '') + '\n' +
           'Generated filename(s):\n- ' + fileNames.join('\n- ') + '\n' +
           (pushed
             ? 'Status: Images + manifest pushed to GitHub.'
             : 'Status: GitHub push skipped (configure script properties to enable auto-publish).') + '\n\n' +
           'Original email subject: ' + subject;
 
-        details.push({ action: 'add', subject: subject, fileNames: fileNames, pushedToGitHub: pushed });
+        details.push({ action: 'add', subject: subject, productNumber: parsed.productNum, autoAssigned: productAssignment.wasAutoAssigned, fileNames: fileNames, pushedToGitHub: pushed });
+        logInventoryHistory_({
+          action: 'add',
+          productNumber: parsed.productNum,
+          subject: subject,
+          fileNames: fileNames,
+          autoAssigned: productAssignment.wasAutoAssigned,
+          pushedToGitHub: pushed,
+          status: 'success'
+        });
       } else {
-        var productNumToRemove = parseInventoryRemovalProductNumber(message);
-        if (!productNumToRemove) {
-          throw new Error('Invalid inventory email. Use either: Name | Price | Qty | ProductNumber (add) OR REMOVE | ProductNumber (remove).');
+        var removal = parseInventoryRemovalCommand(message);
+        if (!removal) {
+          throw new Error('Invalid inventory email. Use add: Name | Price | Qty | ProductNumber (ProductNumber optional), remove: REMOVE | ProductNumber, or sold: SOLD | ProductNumber.');
         }
         if (!github.enabled) {
           throw new Error('GitHub is not configured. Product removal requires GITHUB_TOKEN, GITHUB_OWNER, and GITHUB_REPO script properties.');
         }
 
-        var removed = removeInventoryByProductNumberOnGitHub_(github, productNumToRemove);
+        var removed = removeInventoryByProductNumberOnGitHub_(github, removal.productNum);
         if (removed.removedCount === 0) {
-          throw new Error('No inventory files found for Product #' + productNumToRemove + '.');
+          throw new Error('No inventory files found for Product #' + removal.productNum + '.');
+        }
+
+        if (removal.action === 'sold') {
+          recordSoldInventory_(removal.productNum, removed.removedFiles, message.getSubject());
         }
 
         actionSummary =
           'Inventory email processed successfully.\n\n' +
-          'Action: Remove Board\n' +
-          'Product #: ' + productNumToRemove + '\n' +
+          'Action: ' + (removal.action === 'sold' ? 'Mark as Sold + Remove Board' : 'Remove Board') + '\n' +
+          'Product #: ' + removal.productNum + '\n' +
           'Removed images: ' + removed.removedCount + '\n' +
           'Removed from manifest: ' + removed.removedFromManifest + '\n\n' +
           'Original email subject: ' + subject;
 
-        details.push({ action: 'remove', subject: subject, productNumber: productNumToRemove, removedCount: removed.removedCount, removedFromManifest: removed.removedFromManifest });
+        details.push({ action: removal.action, subject: subject, productNumber: removal.productNum, removedCount: removed.removedCount, removedFromManifest: removed.removedFromManifest, removedFiles: removed.removedFiles });
+        logInventoryHistory_({
+          action: removal.action,
+          productNumber: removal.productNum,
+          subject: subject,
+          removedCount: removed.removedCount,
+          removedFromManifest: removed.removedFromManifest,
+          removedFiles: removed.removedFiles,
+          status: 'success'
+        });
       }
 
       MailApp.sendEmail({
@@ -369,11 +416,14 @@ function processInventoryInbox() {
         'Inventory email could not be processed.\n\n' +
         'Error: ' + err.message + '\n\n' +
         'Expected formats:\n' +
-        '1) Add board: Name | Price | Qty | ProductNumber\n' +
-        '2) Remove board: REMOVE | ProductNumber\n\n' +
+        '1) Add board: Name | Price | Qty | ProductNumber (ProductNumber optional)\n' +
+        '2) Remove board: REMOVE | ProductNumber\n' +
+        '3) Sold board: SOLD | ProductNumber\n\n' +
         'Examples:\n' +
         'Walnut with Wenge and Maple Stripe | 100 | 1 | 0003\n' +
-        'REMOVE | 0003\n\n' +
+        'Walnut with Wenge and Maple Stripe | 100 | 1 |\n' +
+        'REMOVE | 0003\n' +
+        'SOLD | 0003\n\n' +
         'Attach one or more images. Multiple images will be saved as -01, -02, etc.\n\n' +
         'Original subject:\n' + subject;
 
@@ -388,6 +438,13 @@ function processInventoryInbox() {
 
       errorCount += 1;
       details.push({ subject: subject, error: String(err.message || err) });
+      logInventoryHistory_({
+        action: 'error',
+        productNumber: '',
+        subject: subject,
+        error: String(err.message || err),
+        status: 'error'
+      });
     }
   }
 
@@ -401,17 +458,18 @@ function processInventoryInbox() {
 
 function parseInventorySubject(subject) {
   var parts = String(subject || '').split('|').map(function (p) { return p.trim(); });
-  if (parts.length !== 4) return null;
+  if (parts.length < 3 || parts.length > 4) return null;
 
   var name = parts[0];
   var priceNum = parseFloat(parts[1]);
   var qtyNum = parseInt(parts[2], 10);
-  var productNum = parts[3];
+  var productNum = parts.length === 4 ? parts[3] : '';
 
   if (!name) return null;
+  if (/^(remove|sold)\b/i.test(name)) return null;
   if (isNaN(priceNum) || priceNum <= 0) return null;
   if (isNaN(qtyNum) || qtyNum <= 0) return null;
-  if (!/^[A-Za-z0-9]+$/.test(productNum)) return null;
+  if (productNum && !/^[A-Za-z0-9]+$/.test(productNum)) return null;
 
   return {
     name: name,
@@ -421,21 +479,94 @@ function parseInventorySubject(subject) {
   };
 }
 
-function parseInventoryRemovalProductNumber(message) {
+function parseInventoryRemovalCommand(message) {
   var subject = String(message.getSubject() || '').trim();
   var body = String(message.getPlainBody ? message.getPlainBody() : '').trim();
   var combined = subject + '\n' + body;
 
-  var explicit = combined.match(/(?:^|\b)(?:remove|delete|sold\s*out)\s*[|:#-]*\s*([A-Za-z0-9]+)(?:\b|$)/i);
-  if (explicit && explicit[1]) {
-    return explicit[1];
+  var direct = subject.match(/^\s*(REMOVE|SOLD)\s*\|\s*([A-Za-z0-9]+)\s*$/i);
+  if (direct) {
+    return {
+      action: direct[1].toLowerCase() === 'sold' ? 'sold' : 'remove',
+      productNum: direct[2]
+    };
   }
 
-  if (/^[A-Za-z0-9]+$/.test(subject)) {
-    return subject;
+  var explicit = combined.match(/(?:^|\b)(remove|sold|sold\s*out|delete)\s*[|:#-]*\s*([A-Za-z0-9]+)(?:\b|$)/i);
+  if (explicit && explicit[2]) {
+    var keyword = explicit[1].toLowerCase();
+    return {
+      action: keyword.indexOf('sold') === 0 ? 'sold' : 'remove',
+      productNum: explicit[2]
+    };
   }
 
   return null;
+}
+
+function resolveInventoryProductNumber_(parsed, github) {
+  var candidate = String(parsed.productNum || '').trim();
+  if (candidate) {
+    rememberInventoryProductNumber_(candidate);
+    return { productNum: candidate, wasAutoAssigned: false };
+  }
+  var nextNum = getNextInventoryProductNumber_(github);
+  return { productNum: nextNum, wasAutoAssigned: true };
+}
+
+function getNextInventoryProductNumber_(github) {
+  var props = PropertiesService.getScriptProperties();
+  var initialized = props.getProperty('INVENTORY_LAST_PRODUCT_NUMBER_INITIALIZED') === '1';
+  if (!initialized) {
+    var maxKnown = getMaxKnownInventoryProductNumber_(github);
+    props.setProperty('INVENTORY_LAST_PRODUCT_NUMBER', String(maxKnown));
+    props.setProperty('INVENTORY_LAST_PRODUCT_NUMBER_INITIALIZED', '1');
+  }
+
+  var last = parseInt(props.getProperty('INVENTORY_LAST_PRODUCT_NUMBER') || '0', 10);
+  if (isNaN(last) || last < 0) last = 0;
+  var next = last + 1;
+  props.setProperty('INVENTORY_LAST_PRODUCT_NUMBER', String(next));
+  return formatInventoryProductNumber_(next);
+}
+
+function rememberInventoryProductNumber_(productNum) {
+  var n = parseInt(String(productNum), 10);
+  if (isNaN(n) || n < 0) return;
+  var props = PropertiesService.getScriptProperties();
+  var last = parseInt(props.getProperty('INVENTORY_LAST_PRODUCT_NUMBER') || '0', 10);
+  if (isNaN(last) || n > last) {
+    props.setProperty('INVENTORY_LAST_PRODUCT_NUMBER', String(n));
+  }
+  props.setProperty('INVENTORY_LAST_PRODUCT_NUMBER_INITIALIZED', '1');
+}
+
+function getMaxKnownInventoryProductNumber_(github) {
+  var maxNum = 0;
+  var sold = getSoldInventoryRecords_();
+  for (var i = 0; i < sold.length; i++) {
+    var sn = parseInt(String(sold[i].productNumber || ''), 10);
+    if (!isNaN(sn) && sn > maxNum) maxNum = sn;
+  }
+
+  if (github && github.enabled) {
+    var manifest = getInventoryManifestFromGitHub_(github);
+    var re = /^.+-\d+(?:\.\d{1,2})?-\d+-([A-Za-z0-9]+)(?:-(\d+))?\.(?:jpe?g|png|webp)$/i;
+    for (var m = 0; m < manifest.length; m++) {
+      var mm = String(manifest[m] || '').match(re);
+      if (!mm || !mm[1]) continue;
+      var n = parseInt(String(mm[1]), 10);
+      if (!isNaN(n) && n > maxNum) maxNum = n;
+    }
+  }
+
+  return maxNum;
+}
+
+function formatInventoryProductNumber_(num) {
+  var s = String(num);
+  while (s.length < 4) s = '0' + s;
+  return s;
 }
 
 function getImageAttachments(message) {
@@ -501,6 +632,19 @@ function loadGitHubConfig_() {
     repo: repo,
     branch: branch
   };
+}
+
+function getInventoryManifestFromGitHub_(cfg) {
+  var path = 'images/products/available/inventory-manifest.json';
+  var existing = getGitHubFileIfExists_(cfg, path);
+  if (!existing || !existing.content) return [];
+  var decoded = Utilities.newBlob(Utilities.base64Decode(existing.content.replace(/\n/g, ''))).getDataAsString();
+  try {
+    var parsed = JSON.parse(decoded);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
 }
 
 function pushInventoryImageToGitHub_(cfg, fileName, blob) {
@@ -590,8 +734,241 @@ function removeInventoryByProductNumberOnGitHub_(cfg, productNumber) {
 
   return {
     removedCount: toDelete.length,
-    removedFromManifest: removedFromManifest
+    removedFromManifest: removedFromManifest,
+    removedFiles: toDelete.map(function (entry) { return entry.name; })
   };
+}
+
+function recordSoldInventory_(productNumber, removedFiles, sourceSubject) {
+  var props = PropertiesService.getScriptProperties();
+  var key = 'soldInventoryRecords';
+  var raw = props.getProperty(key) || '[]';
+  var list = [];
+  try {
+    list = JSON.parse(raw);
+    if (!Array.isArray(list)) list = [];
+  } catch (e) {
+    list = [];
+  }
+
+  list.push({
+    productNumber: String(productNumber),
+    soldAt: new Date().toISOString(),
+    removedFiles: removedFiles || [],
+    sourceSubject: String(sourceSubject || '')
+  });
+
+  props.setProperty(key, JSON.stringify(list));
+  rememberInventoryProductNumber_(productNumber);
+}
+
+function getSoldInventoryRecords_() {
+  var raw = PropertiesService.getScriptProperties().getProperty('soldInventoryRecords') || '[]';
+  try {
+    var parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function getInventoryHistoryAccessKey_() {
+  var props = PropertiesService.getScriptProperties();
+  var key = props.getProperty('INVENTORY_HISTORY_KEY');
+  if (!key) {
+    key = INVENTORY_HISTORY_DEFAULT_KEY;
+    props.setProperty('INVENTORY_HISTORY_KEY', key);
+  }
+  return key;
+}
+
+function logInventoryHistory_(entry) {
+  var props = PropertiesService.getScriptProperties();
+  var key = 'inventoryHistoryLog';
+  var raw = props.getProperty(key) || '[]';
+  var list = [];
+  try {
+    list = JSON.parse(raw);
+    if (!Array.isArray(list)) list = [];
+  } catch (e) {
+    list = [];
+  }
+
+  list.push({
+    at: new Date().toISOString(),
+    action: String(entry.action || ''),
+    status: String(entry.status || 'success'),
+    productNumber: String(entry.productNumber || ''),
+    subject: String(entry.subject || ''),
+    fileNames: Array.isArray(entry.fileNames) ? entry.fileNames : [],
+    removedFiles: Array.isArray(entry.removedFiles) ? entry.removedFiles : [],
+    removedCount: Number(entry.removedCount || 0),
+    removedFromManifest: Number(entry.removedFromManifest || 0),
+    autoAssigned: !!entry.autoAssigned,
+    pushedToGitHub: !!entry.pushedToGitHub,
+    error: String(entry.error || '')
+  });
+
+  props.setProperty(key, JSON.stringify(list));
+}
+
+function getInventoryHistoryLog_() {
+  var raw = PropertiesService.getScriptProperties().getProperty('inventoryHistoryLog') || '[]';
+  try {
+    var parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function buildInventoryHistoryDashboard(accessKey) {
+  var history = getInventoryHistoryLog_();
+  var soldRecords = getSoldInventoryRecords_();
+  var totalAdds = 0;
+  var totalRemoves = 0;
+  var totalSold = 0;
+  var totalErrors = 0;
+
+  for (var i = 0; i < history.length; i++) {
+    var action = String(history[i].action || '').toLowerCase();
+    if (action === 'add') totalAdds += 1;
+    if (action === 'remove') totalRemoves += 1;
+    if (action === 'sold') totalSold += 1;
+    if (action === 'error') totalErrors += 1;
+  }
+
+  var scriptUrl = ScriptApp.getService().getUrl();
+  var csvUrl = scriptUrl + '?action=exportInventoryHistoryCsv&key=' + encodeURIComponent(accessKey);
+
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">' +
+    '<title>Inventory History | Mitch\'s Hardwoods</title>' +
+    '<style>' +
+    'body{font-family:Arial,sans-serif;background:#0a0a0a;color:#fff;margin:0;padding:24px;}' +
+    '.wrap{max-width:1100px;margin:0 auto;}' +
+    'h1{color:#c9a96e;margin:0 0 8px;font-size:28px;}' +
+    '.sub{color:rgba(255,255,255,.6);margin-bottom:20px;}' +
+    '.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px;}' +
+    '.stat{background:#141414;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:14px;}' +
+    '.stat .label{font-size:12px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.5px;}' +
+    '.stat .value{font-size:24px;color:#fff;font-weight:700;}' +
+    '.actions{margin:12px 0 20px;}' +
+    '.btn{display:inline-block;padding:10px 16px;border-radius:8px;text-decoration:none;background:#c9a96e;color:#111;font-weight:700;}' +
+    '.table{width:100%;border-collapse:collapse;background:#141414;border:1px solid rgba(255,255,255,.1);border-radius:10px;overflow:hidden;}' +
+    '.table th,.table td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.08);font-size:13px;text-align:left;vertical-align:top;}' +
+    '.table th{background:#1b1b1b;color:rgba(255,255,255,.75);font-weight:600;}' +
+    '.pill{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700;text-transform:uppercase;}' +
+    '.pill-add{background:#21452a;color:#8dd39e;}' +
+    '.pill-remove{background:#4b2d12;color:#f6c690;}' +
+    '.pill-sold{background:#3b234d;color:#d8b4fe;}' +
+    '.pill-error{background:#4b1d1d;color:#ffb4b4;}' +
+    '.muted{color:rgba(255,255,255,.55);font-size:12px;}' +
+    '.empty{padding:24px;text-align:center;color:rgba(255,255,255,.5);}' +
+    '</style></head><body><div class="wrap">' +
+    '<h1>Inventory History</h1>' +
+    '<p class="sub">Full historical log of add, remove, sold, and error events.</p>' +
+    '<div class="stats">' +
+      '<div class="stat"><div class="label">Adds</div><div class="value">' + totalAdds + '</div></div>' +
+      '<div class="stat"><div class="label">Removes</div><div class="value">' + totalRemoves + '</div></div>' +
+      '<div class="stat"><div class="label">Sold</div><div class="value">' + totalSold + '</div></div>' +
+      '<div class="stat"><div class="label">Errors</div><div class="value">' + totalErrors + '</div></div>' +
+      '<div class="stat"><div class="label">Sold Records</div><div class="value">' + soldRecords.length + '</div></div>' +
+    '</div>' +
+    '<div class="actions"><a class="btn" href="' + csvUrl + '">Download CSV</a></div>';
+
+  if (history.length === 0) {
+    html += '<div class="empty">No inventory history has been recorded yet.</div>';
+  } else {
+    html += '<table class="table"><thead><tr>' +
+      '<th>Date/Time</th><th>Action</th><th>Product #</th><th>Details</th><th>Status</th>' +
+      '</tr></thead><tbody>';
+
+    for (var h = history.length - 1; h >= 0; h--) {
+      var row = history[h];
+      var actionLabel = String(row.action || '').toLowerCase();
+      var pillClass = actionLabel === 'add' ? 'pill-add' : (actionLabel === 'remove' ? 'pill-remove' : (actionLabel === 'sold' ? 'pill-sold' : 'pill-error'));
+      var dt = row.at ? new Date(row.at).toLocaleString() : 'N/A';
+      var detailParts = [];
+      if (row.fileNames && row.fileNames.length) detailParts.push('files: ' + row.fileNames.join(', '));
+      if (row.removedFiles && row.removedFiles.length) detailParts.push('removed: ' + row.removedFiles.join(', '));
+      if (row.autoAssigned) detailParts.push('auto-assigned product#');
+      if (row.removedCount) detailParts.push('removedCount=' + row.removedCount);
+      if (row.error) detailParts.push('error=' + row.error);
+      if (row.subject) detailParts.push('subject=' + row.subject);
+
+      html += '<tr>' +
+        '<td>' + dt + '</td>' +
+        '<td><span class="pill ' + pillClass + '">' + escapeHtmlText_(actionLabel || 'unknown') + '</span></td>' +
+        '<td>' + escapeHtmlText_(row.productNumber || '') + '</td>' +
+        '<td class="muted">' + escapeHtmlText_(detailParts.join(' | ')) + '</td>' +
+        '<td>' + escapeHtmlText_(row.status || '') + '</td>' +
+      '</tr>';
+    }
+    html += '</tbody></table>';
+  }
+
+  html += '</div></body></html>';
+  return html;
+}
+
+function buildInventoryHistoryCsv() {
+  var history = getInventoryHistoryLog_();
+  var rows = [
+    [
+      'at', 'action', 'status', 'productNumber', 'subject', 'fileNames', 'removedFiles', 'removedCount', 'removedFromManifest', 'autoAssigned', 'pushedToGitHub', 'error'
+    ]
+  ];
+
+  for (var i = 0; i < history.length; i++) {
+    var r = history[i];
+    rows.push([
+      r.at || '',
+      r.action || '',
+      r.status || '',
+      r.productNumber || '',
+      r.subject || '',
+      (r.fileNames || []).join('; '),
+      (r.removedFiles || []).join('; '),
+      String(r.removedCount || 0),
+      String(r.removedFromManifest || 0),
+      r.autoAssigned ? 'true' : 'false',
+      r.pushedToGitHub ? 'true' : 'false',
+      r.error || ''
+    ]);
+  }
+
+  return toCsv_(rows);
+}
+
+function toCsv_(rows) {
+  return rows.map(function (row) {
+    return row.map(function (cell) {
+      var val = String(cell == null ? '' : cell);
+      if (/[,"\n]/.test(val)) {
+        val = '"' + val.replace(/"/g, '""') + '"';
+      }
+      return val;
+    }).join(',');
+  }).join('\n');
+}
+
+function escapeHtmlText_(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function sendInventoryHistoryLink() {
+  var key = getInventoryHistoryAccessKey_();
+  var url = ScriptApp.getService().getUrl() + '?action=viewInventoryHistory&key=' + encodeURIComponent(key);
+  MailApp.sendEmail({
+    to: OWNER_EMAIL,
+    subject: 'Inventory History Report Link',
+    body: 'Open your full inventory history report:\n\n' + url + '\n\nCSV export is available from that page.'
+  });
 }
 
 function removeInventoryFromManifestOnGitHub_(cfg, normalizedProduct) {

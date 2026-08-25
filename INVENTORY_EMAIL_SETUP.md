@@ -35,8 +35,22 @@ When one image is attached, it is saved as:
 To remove inventory by Product #, use subject format:
 - REMOVE | ProductNumber
 
+To mark sold and remove from inventory (while keeping sales record), use:
+- SOLD | ProductNumber
+
 Example:
 - REMOVE | 0003
+- SOLD | 0003
+
+If you leave ProductNumber blank on add emails, the script auto-assigns the next available number.
+
+Examples:
+- Walnut with Wenge and Maple Stripe | 100 | 1 |
+- Purple Heart Basket Weave | 250 | 1 |
+
+Numbering behavior:
+- Product numbers are never reused.
+- If 0002 is sold/removed, next auto-assigned number after 0001 and 0002 is 0003.
 
 ## 3) Add Script Properties in Apps Script
 
@@ -46,6 +60,7 @@ In Apps Script:
 
 Add:
 - INVENTORY_WEBHOOK_KEY = <your-random-secret>
+- INVENTORY_HISTORY_KEY = <your-random-report-key>
 - GITHUB_TOKEN = <optional GitHub PAT with repo contents write access>
 - GITHUB_OWNER = <your GitHub org/user>
 - GITHUB_REPO = <your repo name, e.g. Hardwoods-Website>
@@ -94,12 +109,15 @@ For each valid email in `MitchHardwoods/Inventory/New`:
 5. If action is Remove:
    - All inventory image files matching `product#` are deleted from `images/products/available/`
    - Matching entries are removed from `images/products/available/inventory-manifest.json`
-6. Thread is labeled Processed and marked read.
-7. Owner gets a summary email.
+6. If action is Sold:
+   - Same inventory removal behavior as Remove
+   - A sold record is saved in Apps Script `ScriptProperties` with `productNumber`, timestamp, and removed filenames
+7. Thread is labeled Processed and marked read.
+8. Owner gets a summary email.
 
 ## 8) Error Handling
 
-If the email format is wrong, no image is attached (for Add), or product number is not found (for Remove):
+If the email format is wrong, no image is attached (for Add), or product number is not found (for Remove/Sold):
 - Thread gets label `MitchHardwoods/Inventory/Error`
 - Owner gets an "Inventory Processing Error" email with required format.
 
@@ -109,3 +127,24 @@ All images that share the same board id (`product#`) are grouped into one produc
 Customers can:
 1. Use carousel arrows on the card.
 2. Click the image and navigate all photos in the lightbox.
+
+## 10) Full Historical Report
+
+The script now keeps a complete inventory history log of:
+- Add events
+- Remove events
+- Sold events
+- Processing errors
+
+Secure report endpoints:
+- Dashboard:
+   - `?action=viewInventoryHistory&key=<INVENTORY_HISTORY_KEY>`
+- CSV export:
+   - `?action=exportInventoryHistoryCsv&key=<INVENTORY_HISTORY_KEY>`
+
+Quick way to get the link emailed to owner:
+- Run Apps Script function: `sendInventoryHistoryLink`
+
+Notes:
+- If `INVENTORY_HISTORY_KEY` is not set, a default key is created automatically.
+- For security, set your own strong `INVENTORY_HISTORY_KEY` in Script Properties.
