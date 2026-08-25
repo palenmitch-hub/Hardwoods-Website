@@ -5,6 +5,10 @@
 
 var OWNER_EMAIL = 'orders@mitchs-hardwoods.com';
 var VIEW_ORDERS_KEY = 'mitchhardwoods2026';
+var INVENTORY_EMAIL = 'inventory@mitchs-hardwoods.com';
+var INVENTORY_LABEL_NEW = 'MitchHardwoods/Inventory/New';
+var INVENTORY_LABEL_PROCESSED = 'MitchHardwoods/Inventory/Processed';
+var INVENTORY_LABEL_ERROR = 'MitchHardwoods/Inventory/Error';
 
 // ---- POST Handler (new orders from website) ----
 
@@ -20,12 +24,28 @@ function doPost(e) {
     if (data.action === 'submitOrder') {
       return handleSubmitOrder(data);
     }
+    if (data.action === 'processInventoryInbox') {
+      return handleProcessInventoryInbox(data);
+    }
     return ContentService.createTextOutput(JSON.stringify({ success: false, error: 'Unknown action' }))
       .setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
     return ContentService.createTextOutput(JSON.stringify({ success: false, error: err.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
   }
+}
+
+function handleProcessInventoryInbox(data) {
+  var key = data && data.key ? String(data.key) : '';
+  var configuredKey = PropertiesService.getScriptProperties().getProperty('INVENTORY_WEBHOOK_KEY') || '';
+  if (!configuredKey || key !== configuredKey) {
+    return ContentService.createTextOutput(JSON.stringify({ success: false, error: 'Unauthorized' }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  var result = processInventoryInbox();
+  return ContentService.createTextOutput(JSON.stringify({ success: true, result: result }))
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 // ---- GET Handler (confirm/deny/view links) ----
@@ -239,6 +259,469 @@ function getConfirmedOrders() {
   var store = PropertiesService.getScriptProperties();
   var ordersJson = store.getProperty('confirmedOrders') || '[]';
   return JSON.parse(ordersJson);
+}
+
+// ---- Inventory Email Automation ----
+
+function setupInventoryEmailLabels() {
+  ensureGmailLabel(INVENTORY_LABEL_NEW);
+  ensureGmailLabel(INVENTORY_LABEL_PROCESSED);
+  ensureGmailLabel(INVENTORY_LABEL_ERROR);
+}
+
+function processInventoryInbox() {
+  setupInventoryEmailLabels();
+
+  var labelNew = GmailApp.getUserLabelByName(INVENTORY_LABEL_NEW);
+  var labelProcessed = GmailApp.getUserLabelByName(INVENTORY_LABEL_PROCESSED);
+  var labelError = GmailApp.getUserLabelByName(INVENTORY_LABEL_ERROR);
+
+  var query = 'label:"' + INVENTORY_LABEL_NEW + '"';
+  var threads = GmailApp.search(query, 0, 20);
+  var processedCount = 0;
+  var errorCount = 0;
+  var details = [];
+
+  for (var t = 0; t < threads.length; t++) {
+    var thread = threads[t];
+    var messages = thread.getMessages();
+    if (!messages || messages.length === 0) continue;
+
+    var message = messages[messages.length - 1];
+    var subject = message.getSubject() || '';
+
+    try {
+      var parsed = parseInventorySubject(subject);
+      var github = loadGitHubConfig_();
+      var actionSummary = '';
+
+      if (parsed) {
+        var imageBlobs = getImageAttachments(message);
+        if (!imageBlobs || imageBlobs.length === 0) {
+          throw new Error('No image attachment found. Attach at least one JPG, PNG, or WEBP image.');
+        }
+
+        var fileNames = [];
+        for (var a = 0; a < imageBlobs.length; a++) {
+          var ext = getExtensionFromBlob(imageBlobs[a]);
+          var fileName = buildInventoryFileName(parsed, ext, a + 1, imageBlobs.length);
+          fileNames.push(fileName);
+        }
+
+        var pushed = false;
+        if (github.enabled) {
+          for (var gi = 0; gi < imageBlobs.length; gi++) {
+            pushInventoryImageToGitHub_(github, fileNames[gi], imageBlobs[gi]);
+          }
+          updateInventoryManifestOnGitHub_(github, fileNames);
+          pushed = true;
+        }
+
+        actionSummary =
+          'Inventory email processed successfully.\n\n' +
+          'Action: Add / Update Board\n' +
+          'Generated filename(s):\n- ' + fileNames.join('\n- ') + '\n' +
+          (pushed
+            ? 'Status: Images + manifest pushed to GitHub.'
+            : 'Status: GitHub push skipped (configure script properties to enable auto-publish).') + '\n\n' +
+          'Original email subject: ' + subject;
+
+        details.push({ action: 'add', subject: subject, fileNames: fileNames, pushedToGitHub: pushed });
+      } else {
+        var productNumToRemove = parseInventoryRemovalProductNumber(message);
+        if (!productNumToRemove) {
+          throw new Error('Invalid inventory email. Use either: Name | Price | Qty | ProductNumber (add) OR REMOVE | ProductNumber (remove).');
+        }
+        if (!github.enabled) {
+          throw new Error('GitHub is not configured. Product removal requires GITHUB_TOKEN, GITHUB_OWNER, and GITHUB_REPO script properties.');
+        }
+
+        var removed = removeInventoryByProductNumberOnGitHub_(github, productNumToRemove);
+        if (removed.removedCount === 0) {
+          throw new Error('No inventory files found for Product #' + productNumToRemove + '.');
+        }
+
+        actionSummary =
+          'Inventory email processed successfully.\n\n' +
+          'Action: Remove Board\n' +
+          'Product #: ' + productNumToRemove + '\n' +
+          'Removed images: ' + removed.removedCount + '\n' +
+          'Removed from manifest: ' + removed.removedFromManifest + '\n\n' +
+          'Original email subject: ' + subject;
+
+        details.push({ action: 'remove', subject: subject, productNumber: productNumToRemove, removedCount: removed.removedCount, removedFromManifest: removed.removedFromManifest });
+      }
+
+      MailApp.sendEmail({
+        to: OWNER_EMAIL,
+        subject: 'Inventory Processed',
+        body: actionSummary
+      });
+
+      thread.removeLabel(labelNew);
+      thread.removeLabel(labelError);
+      thread.addLabel(labelProcessed);
+      thread.markRead();
+
+      processedCount += 1;
+    } catch (err) {
+      var errorBody =
+        'Inventory email could not be processed.\n\n' +
+        'Error: ' + err.message + '\n\n' +
+        'Expected formats:\n' +
+        '1) Add board: Name | Price | Qty | ProductNumber\n' +
+        '2) Remove board: REMOVE | ProductNumber\n\n' +
+        'Examples:\n' +
+        'Walnut with Wenge and Maple Stripe | 100 | 1 | 0003\n' +
+        'REMOVE | 0003\n\n' +
+        'Attach one or more images. Multiple images will be saved as -01, -02, etc.\n\n' +
+        'Original subject:\n' + subject;
+
+      MailApp.sendEmail({
+        to: OWNER_EMAIL,
+        subject: 'Inventory Processing Error',
+        body: errorBody
+      });
+
+      thread.addLabel(labelError);
+      thread.markRead();
+
+      errorCount += 1;
+      details.push({ subject: subject, error: String(err.message || err) });
+    }
+  }
+
+  return {
+    checkedThreads: threads.length,
+    processed: processedCount,
+    errors: errorCount,
+    details: details
+  };
+}
+
+function parseInventorySubject(subject) {
+  var parts = String(subject || '').split('|').map(function (p) { return p.trim(); });
+  if (parts.length !== 4) return null;
+
+  var name = parts[0];
+  var priceNum = parseFloat(parts[1]);
+  var qtyNum = parseInt(parts[2], 10);
+  var productNum = parts[3];
+
+  if (!name) return null;
+  if (isNaN(priceNum) || priceNum <= 0) return null;
+  if (isNaN(qtyNum) || qtyNum <= 0) return null;
+  if (!/^[A-Za-z0-9]+$/.test(productNum)) return null;
+
+  return {
+    name: name,
+    price: priceNum,
+    qty: qtyNum,
+    productNum: productNum
+  };
+}
+
+function parseInventoryRemovalProductNumber(message) {
+  var subject = String(message.getSubject() || '').trim();
+  var body = String(message.getPlainBody ? message.getPlainBody() : '').trim();
+  var combined = subject + '\n' + body;
+
+  var explicit = combined.match(/(?:^|\b)(?:remove|delete|sold\s*out)\s*[|:#-]*\s*([A-Za-z0-9]+)(?:\b|$)/i);
+  if (explicit && explicit[1]) {
+    return explicit[1];
+  }
+
+  if (/^[A-Za-z0-9]+$/.test(subject)) {
+    return subject;
+  }
+
+  return null;
+}
+
+function getImageAttachments(message) {
+  var attachments = message.getAttachments({ includeInlineImages: false, includeAttachments: true });
+  var images = [];
+  for (var i = 0; i < attachments.length; i++) {
+    var blob = attachments[i];
+    var contentType = String(blob.getContentType() || '').toLowerCase();
+    if (contentType.indexOf('image/') === 0) {
+      images.push(blob);
+      continue;
+    }
+    var name = String(blob.getName() || '').toLowerCase();
+    if (/\.(jpg|jpeg|png|webp)$/.test(name)) {
+      images.push(blob);
+    }
+  }
+  return images;
+}
+
+function getExtensionFromBlob(blob) {
+  var contentType = String(blob.getContentType() || '').toLowerCase();
+  if (contentType === 'image/jpeg' || contentType === 'image/jpg') return 'jpg';
+  if (contentType === 'image/png') return 'png';
+  if (contentType === 'image/webp') return 'webp';
+
+  var name = String(blob.getName() || '').toLowerCase();
+  var m = name.match(/\.(jpg|jpeg|png|webp)$/);
+  if (!m) return 'jpg';
+  return m[1] === 'jpeg' ? 'jpg' : m[1];
+}
+
+function buildInventoryFileName(parsed, extension, imageIndex, totalImages) {
+  var safeName = parsed.name
+    .replace(/[\\/:*?"<>|]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  var priceStr = Number(parsed.price).toFixed(2).replace(/\.00$/, '');
+  var baseName = safeName + '-' + priceStr + '-' + parsed.qty + '-' + parsed.productNum;
+  if ((totalImages || 0) > 1) {
+    var idx = Number(imageIndex || 1);
+    var idxStr = idx < 10 ? ('0' + idx) : String(idx);
+    return baseName + '-' + idxStr + '.' + extension;
+  }
+  return baseName + '.' + extension;
+}
+
+function ensureGmailLabel(name) {
+  var lbl = GmailApp.getUserLabelByName(name);
+  if (!lbl) GmailApp.createLabel(name);
+}
+
+function loadGitHubConfig_() {
+  var props = PropertiesService.getScriptProperties();
+  var token = props.getProperty('GITHUB_TOKEN') || '';
+  var owner = props.getProperty('GITHUB_OWNER') || '';
+  var repo = props.getProperty('GITHUB_REPO') || '';
+  var branch = props.getProperty('GITHUB_BRANCH') || 'main';
+  return {
+    enabled: !!(token && owner && repo),
+    token: token,
+    owner: owner,
+    repo: repo,
+    branch: branch
+  };
+}
+
+function pushInventoryImageToGitHub_(cfg, fileName, blob) {
+  var path = 'images/products/available/' + fileName;
+  var bytes = blob.getBytes();
+  var b64 = Utilities.base64Encode(bytes);
+  var existing = getGitHubFileIfExists_(cfg, path);
+
+  var payload = {
+    message: 'Add inventory image: ' + fileName,
+    content: b64,
+    branch: cfg.branch
+  };
+  if (existing && existing.sha) payload.sha = existing.sha;
+
+  putGitHubFile_(cfg, path, payload);
+}
+
+function updateInventoryManifestOnGitHub_(cfg, fileNames) {
+  var path = 'images/products/available/inventory-manifest.json';
+  var existing = getGitHubFileIfExists_(cfg, path);
+  var list = [];
+
+  if (existing && existing.content) {
+    var decoded = Utilities.newBlob(Utilities.base64Decode(existing.content.replace(/\n/g, ''))).getDataAsString();
+    try {
+      var parsed = JSON.parse(decoded);
+      if (parsed && parsed.push) list = parsed;
+    } catch (e) {
+      list = [];
+    }
+  }
+
+  var incoming = Array.isArray(fileNames) ? fileNames : [fileNames];
+  for (var i = 0; i < incoming.length; i++) {
+    if (list.indexOf(incoming[i]) === -1) {
+      list.push(incoming[i]);
+    }
+  }
+
+  list.sort(function (a, b) {
+    var re = /^.+-\d+(?:\.\d{1,2})?-\d+-([A-Za-z0-9]+)(?:-(\d+))?\.(?:jpe?g|png|webp)$/i;
+    var ma = a.match(re);
+    var mb = b.match(re);
+    var ka = ma ? ma[1] : a;
+    var kb = mb ? mb[1] : b;
+    var cmp = ka.localeCompare(kb, undefined, { numeric: true, sensitivity: 'base' });
+    if (cmp !== 0) return cmp;
+    var ia = ma && ma[2] ? parseInt(ma[2], 10) : 1;
+    var ib = mb && mb[2] ? parseInt(mb[2], 10) : 1;
+    return ia - ib;
+  });
+
+  var manifestText = JSON.stringify(list, null, 2) + '\n';
+  var payload = {
+    message: 'Update inventory manifest',
+    content: Utilities.base64Encode(manifestText),
+    branch: cfg.branch
+  };
+  if (existing && existing.sha) payload.sha = existing.sha;
+
+  putGitHubFile_(cfg, path, payload);
+}
+
+function removeInventoryByProductNumberOnGitHub_(cfg, productNumber) {
+  var dirPath = 'images/products/available';
+  var entries = listGitHubDirectory_(cfg, dirPath);
+  var normalizedProduct = String(productNumber || '').toLowerCase();
+  var imagePattern = /^.+-\d+(?:\.\d{1,2})?-\d+-([A-Za-z0-9]+)(?:-(\d+))?\.(?:jpe?g|png|webp)$/i;
+  var toDelete = [];
+
+  for (var i = 0; i < entries.length; i++) {
+    var entry = entries[i];
+    if (!entry || entry.type !== 'file') continue;
+    var m = String(entry.name || '').match(imagePattern);
+    if (!m) continue;
+    if (String(m[1]).toLowerCase() === normalizedProduct) {
+      toDelete.push(entry);
+    }
+  }
+
+  for (var d = 0; d < toDelete.length; d++) {
+    deleteGitHubFile_(cfg, toDelete[d].path, toDelete[d].sha, 'Remove inventory image: ' + toDelete[d].name);
+  }
+
+  var removedFromManifest = removeInventoryFromManifestOnGitHub_(cfg, normalizedProduct);
+
+  return {
+    removedCount: toDelete.length,
+    removedFromManifest: removedFromManifest
+  };
+}
+
+function removeInventoryFromManifestOnGitHub_(cfg, normalizedProduct) {
+  var path = 'images/products/available/inventory-manifest.json';
+  var existing = getGitHubFileIfExists_(cfg, path);
+  if (!existing || !existing.content) return 0;
+
+  var decoded = Utilities.newBlob(Utilities.base64Decode(existing.content.replace(/\n/g, ''))).getDataAsString();
+  var list = [];
+  try {
+    var parsed = JSON.parse(decoded);
+    if (parsed && parsed.push) list = parsed;
+  } catch (e) {
+    list = [];
+  }
+
+  var re = /^.+-\d+(?:\.\d{1,2})?-\d+-([A-Za-z0-9]+)(?:-(\d+))?\.(?:jpe?g|png|webp)$/i;
+  var kept = [];
+  var removed = 0;
+  for (var i = 0; i < list.length; i++) {
+    var item = String(list[i] || '');
+    var m = item.match(re);
+    var itemProduct = m && m[1] ? String(m[1]).toLowerCase() : '';
+    if (itemProduct === normalizedProduct) {
+      removed += 1;
+      continue;
+    }
+    kept.push(item);
+  }
+
+  if (removed > 0) {
+    var manifestText = JSON.stringify(kept, null, 2) + '\n';
+    var payload = {
+      message: 'Remove inventory entries for product #' + normalizedProduct,
+      content: Utilities.base64Encode(manifestText),
+      branch: cfg.branch,
+      sha: existing.sha
+    };
+    putGitHubFile_(cfg, path, payload);
+  }
+
+  return removed;
+}
+
+function getGitHubFileIfExists_(cfg, path) {
+  var url = 'https://api.github.com/repos/' + encodeURIComponent(cfg.owner) + '/' + encodeURIComponent(cfg.repo) + '/contents/' + path + '?ref=' + encodeURIComponent(cfg.branch);
+  var resp = UrlFetchApp.fetch(url, {
+    method: 'get',
+    muteHttpExceptions: true,
+    headers: {
+      Authorization: 'Bearer ' + cfg.token,
+      Accept: 'application/vnd.github+json'
+    }
+  });
+
+  var code = resp.getResponseCode();
+  if (code === 404) return null;
+  if (code < 200 || code >= 300) {
+    throw new Error('GitHub read failed (' + code + '): ' + resp.getContentText());
+  }
+  return JSON.parse(resp.getContentText());
+}
+
+function listGitHubDirectory_(cfg, path) {
+  var url = 'https://api.github.com/repos/' + encodeURIComponent(cfg.owner) + '/' + encodeURIComponent(cfg.repo) + '/contents/' + path + '?ref=' + encodeURIComponent(cfg.branch);
+  var resp = UrlFetchApp.fetch(url, {
+    method: 'get',
+    muteHttpExceptions: true,
+    headers: {
+      Authorization: 'Bearer ' + cfg.token,
+      Accept: 'application/vnd.github+json'
+    }
+  });
+
+  var code = resp.getResponseCode();
+  if (code === 404) return [];
+  if (code < 200 || code >= 300) {
+    throw new Error('GitHub directory read failed (' + code + '): ' + resp.getContentText());
+  }
+
+  var parsed = JSON.parse(resp.getContentText());
+  return Array.isArray(parsed) ? parsed : [];
+}
+
+function putGitHubFile_(cfg, path, payload) {
+  var url = 'https://api.github.com/repos/' + encodeURIComponent(cfg.owner) + '/' + encodeURIComponent(cfg.repo) + '/contents/' + path;
+  var resp = UrlFetchApp.fetch(url, {
+    method: 'put',
+    muteHttpExceptions: true,
+    contentType: 'application/json',
+    payload: JSON.stringify(payload),
+    headers: {
+      Authorization: 'Bearer ' + cfg.token,
+      Accept: 'application/vnd.github+json'
+    }
+  });
+  var code = resp.getResponseCode();
+  if (code < 200 || code >= 300) {
+    throw new Error('GitHub write failed (' + code + '): ' + resp.getContentText());
+  }
+}
+
+function deleteGitHubFile_(cfg, path, sha, message) {
+  var url = 'https://api.github.com/repos/' + encodeURIComponent(cfg.owner) + '/' + encodeURIComponent(cfg.repo) + '/contents/' + path;
+  var payload = {
+    message: message || ('Delete ' + path),
+    sha: sha,
+    branch: cfg.branch
+  };
+
+  var resp = UrlFetchApp.fetch(url, {
+    method: 'delete',
+    muteHttpExceptions: true,
+    contentType: 'application/json',
+    payload: JSON.stringify(payload),
+    headers: {
+      Authorization: 'Bearer ' + cfg.token,
+      Accept: 'application/vnd.github+json'
+    }
+  });
+
+  var code = resp.getResponseCode();
+  if (code < 200 || code >= 300) {
+    throw new Error('GitHub delete failed (' + code + '): ' + resp.getContentText());
+  }
+}
+
+function testProcessInventoryInbox() {
+  var result = processInventoryInbox();
+  Logger.log(JSON.stringify(result));
 }
 
 // ---- Confirmed Orders Dashboard ----

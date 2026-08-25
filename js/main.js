@@ -1000,6 +1000,13 @@
     return m ? parseInt(m[1].replace(',', ''), 10) * 100 : 0;
   }
 
+  function resolveProductImageSrc(imageToken) {
+    if (!imageToken) return '';
+    return /\.(jpe?g|png|webp)$/i.test(imageToken)
+      ? ('images/products/' + imageToken)
+      : ('images/products/' + imageToken + '.jpg');
+  }
+
   function buildProductCardHTML(product, id, isBasicBoard) {
     var safe = escapeHtml;
     var imgs = product.images;
@@ -1010,8 +1017,8 @@
     for (var i = 0; i < imgs.length; i++) {
       var activeClass = i === 0 ? ' product-carousel__slide--active' : '';
       var cssClass = hasCarousel ? 'product-carousel__slide' + activeClass : '';
-      imagesHtml += '<img class="' + cssClass + '" data-image-index="' + i + '" src="images/products/' + safe(imgs[i]) +
-        '.jpg" alt="' + safe(product.name) + ' - view ' + (i + 1) + '" loading="lazy">';
+      imagesHtml += '<img class="' + cssClass + '" data-image-index="' + i + '" src="' + safe(resolveProductImageSrc(imgs[i])) +
+        '" alt="' + safe(product.name) + ' - view ' + (i + 1) + '" loading="lazy">';
     }
     if (hasCarousel) {
       imagesHtml += '<button type="button" class="product-carousel__prev" aria-label="Previous photo">&lsaquo;</button>';
@@ -1074,32 +1081,128 @@
       });
   }
 
-  // ---- BoardsInStock.md Data-Driven Rendering ----
+  // ---- In-Stock Filename Data-Driven Rendering ----
 
-  function parseBoardsInStockMd(text) {
-    var boards = [];
-    var current = null;
-    var lines = text.split('\n');
-    for (var i = 0; i < lines.length; i++) {
-      var line = lines[i];
-      var numMatch = line.match(/^\d+\.\s*Name:\s*(.+)/);
-      if (numMatch) {
-        current = { name: numMatch[1].trim(), description: '', price: '', images: [], qty: 0 };
-        boards.push(current);
-        continue;
-      }
-      if (!current) continue;
-      var priceMatch = line.match(/^Price:\s*(.+)/);
-      if (priceMatch) { current.price = priceMatch[1].trim(); continue; }
-      var qtyMatch = line.match(/^Qty:\s*(\d+)/);
-      if (qtyMatch) { current.qty = parseInt(qtyMatch[1], 10); continue; }
-      var imgMatch = line.match(/^Image:\s*(.+)/);
-      if (imgMatch) {
-        current.images = imgMatch[1].split(',').map(function (s) { return s.trim(); });
-        continue;
-      }
+  function normalizeProductName(namePart) {
+    if (!namePart) return '';
+    return namePart
+      .replace(/[_+]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function parseInStockFilename(fileName) {
+    // Expected format: name-price-quantity-product#[-image#].ext
+    // Example: Walnut with Wenge and Maple Stripe-100-1-0001-01.jpg
+    var match = fileName.match(/^(.+)-(\d+(?:\.\d{1,2})?)-(\d+)-([A-Za-z0-9]+)(?:-(\d+))?\.(jpe?g|png|webp)$/i);
+    if (!match) return null;
+
+    var rawName = match[1].trim();
+    var priceNum = parseFloat(match[2]);
+    var qtyNum = parseInt(match[3], 10);
+    var productNum = match[4];
+    var imageNum = match[5] ? parseInt(match[5], 10) : 1;
+    var ext = match[6].toLowerCase();
+
+    if (isNaN(priceNum) || isNaN(qtyNum) || isNaN(imageNum) || imageNum < 1) return null;
+
+    return {
+      id: 'instock-' + productNum.toLowerCase(),
+      productNumber: productNum,
+      name: normalizeProductName(rawName),
+      description: '',
+      price: '$' + priceNum.toFixed(2),
+      imagePath: 'available/' + fileName,
+      imageNum: imageNum,
+      qty: qtyNum,
+      _sortKey: productNum
+    };
+  }
+
+  function parseDirectoryListingForImages(html) {
+    var files = [];
+    var re = /href=["']([^"']+\.(?:jpg|jpeg|png|webp))["']/gi;
+    var m;
+    while ((m = re.exec(html)) !== null) {
+      var href = m[1];
+      var clean = href.split('?')[0].split('#')[0];
+      var fileName = clean.split('/').pop();
+      if (fileName) files.push(decodeURIComponent(fileName));
     }
-    return boards;
+    return files;
+  }
+
+  function parseInStockManifest(text) {
+    try {
+      var parsed = JSON.parse(text);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function loadInStockFromAvailableFolder() {
+    // Try directory listing first (works on some local/static servers),
+    // then fallback to a manifest file for hosts that block listings.
+    return fetch('images/products/available/')
+      .then(function (res) {
+        if (!res.ok) throw new Error('Directory listing unavailable');
+        return res.text();
+      })
+      .then(function (html) {
+        return parseDirectoryListingForImages(html);
+      })
+      .catch(function () {
+        return fetch('images/products/available/inventory-manifest.json')
+          .then(function (res) {
+            if (!res.ok) throw new Error('Manifest unavailable');
+            return res.text();
+          })
+          .then(parseInStockManifest);
+      })
+      .then(function (fileNames) {
+        var groupedBoards = {};
+        for (var i = 0; i < fileNames.length; i++) {
+          var parsed = parseInStockFilename(fileNames[i]);
+          if (!parsed) continue;
+
+          var boardId = parsed.id;
+          if (!groupedBoards[boardId]) {
+            groupedBoards[boardId] = {
+              id: parsed.id,
+              productNumber: parsed.productNumber,
+              name: parsed.name,
+              description: parsed.description,
+              price: parsed.price,
+              qty: parsed.qty,
+              _sortKey: parsed._sortKey,
+              _imageEntries: []
+            };
+          }
+
+          groupedBoards[boardId]._imageEntries.push({
+            imageNum: parsed.imageNum,
+            imagePath: parsed.imagePath
+          });
+        }
+
+        var boards = Object.keys(groupedBoards).map(function (key) {
+          var board = groupedBoards[key];
+          board._imageEntries.sort(function (a, b) {
+            if (a.imageNum !== b.imageNum) return a.imageNum - b.imageNum;
+            return a.imagePath.localeCompare(b.imagePath, undefined, { sensitivity: 'base' });
+          });
+          board.images = board._imageEntries.map(function (entry) { return entry.imagePath; });
+          delete board._imageEntries;
+          return board;
+        });
+
+        boards.sort(function (a, b) {
+          return String(a._sortKey).localeCompare(String(b._sortKey), undefined, { numeric: true, sensitivity: 'base' });
+        });
+
+        return boards;
+      });
   }
 
   function buildInStockCardHTML(product, id) {
@@ -1112,8 +1215,8 @@
     for (var i = 0; i < imgs.length; i++) {
       var activeClass = i === 0 ? ' product-carousel__slide--active' : '';
       var cssClass = hasCarousel ? 'product-carousel__slide' + activeClass : '';
-      imagesHtml += '<img class="' + cssClass + '" data-image-index="' + i + '" src="images/products/' + safe(imgs[i]) +
-        '.jpg" alt="' + safe(product.name) + ' - view ' + (i + 1) + '" loading="lazy">';
+      imagesHtml += '<img class="' + cssClass + '" data-image-index="' + i + '" src="' + safe(resolveProductImageSrc(imgs[i])) +
+        '" alt="' + safe(product.name) + ' - view ' + (i + 1) + '" loading="lazy">';
     }
     if (hasCarousel) {
       imagesHtml += '<button type="button" class="product-carousel__prev" aria-label="Previous photo">&lsaquo;</button>';
@@ -1130,6 +1233,7 @@
       '<div class="' + imageClass + '">' + imagesHtml + '</div>' +
       '<div class="product-card__info">' +
       '<h3 class="product-card__name">' + safe(product.name) + '</h3>' +
+      (product.productNumber ? '<span class="product-card__meta">Product #: ' + safe(product.productNumber) + '</span>' : '') +
       (product.description ? '<p class="product-card__description">' + safe(product.description) + '</p>' : '') +
       '<span class="product-card__price">' + safe(product.price) + '</span>' +
       '<span class="product-card__stock-info">' + qtyAvail + ' available</span>' +
@@ -1143,20 +1247,18 @@
   function loadBoardsInStock() {
     var grid = document.getElementById('in-stock-grid');
     if (!grid) return;
-    fetch('BoardsInStock.md')
-      .then(function (res) { return res.text(); })
-      .then(function (text) {
-        var boards = parseBoardsInStockMd(text);
+    loadInStockFromAvailableFolder()
+      .then(function (boards) {
         var html = '';
         for (var i = 0; i < boards.length; i++) {
-          var id = 'instock-' + (i + 1);
+          var id = boards[i].id || ('instock-' + (i + 1));
           instockInventory[id] = { qty: boards[i].qty || 0 };
           html += buildInStockCardHTML(boards[i], id);
         }
         grid.innerHTML = html;
       })
       .catch(function (err) {
-        console.error('Failed to load BoardsInStock.md:', err);
+        console.error('Failed to load in-stock inventory from images/products/available:', err);
       });
   }
 
@@ -1585,19 +1687,19 @@
     var grid = document.getElementById('featured-grid');
     if (!grid) return;
 
-    var boardsPromise = fetch('BoardsInStock.md').then(function (r) { return r.text(); });
+    var boardsPromise = loadInStockFromAvailableFolder();
     var chairsPromise = fetch('Chairs.md').then(function (r) { return r.text(); });
 
     Promise.all([boardsPromise, chairsPromise]).then(function (results) {
-      var boards = parseBoardsInStockMd(results[0]);
+      var boards = results[0];
       var chairs = parseChairsMd(results[1]);
       var html = '';
 
-      // 2 Available Now boards (first two from BoardsInStock.md)
+      // 2 Available Now boards
       var boardCount = Math.min(2, boards.length);
       for (var i = 0; i < boardCount; i++) {
         var b = boards[i];
-        var id = 'instock-' + (i + 1);
+        var id = b.id || ('instock-' + (i + 1));
         var img = b.images.length ? b.images[0] : '';
         var priceCents = priceToCents(b.price);
         html +=
@@ -1606,10 +1708,11 @@
             '" data-product-price="' + priceCents +
             '" data-in-stock="true" data-qty-available="' + (b.qty || 0) + '">' +
             '<div class="product-card__image">' +
-              '<img src="images/products/' + escapeHtml(img) + '.jpg" alt="' + escapeHtml(b.name) + '" loading="lazy">' +
+              '<img src="' + escapeHtml(resolveProductImageSrc(img)) + '" alt="' + escapeHtml(b.name) + '" loading="lazy">' +
             '</div>' +
             '<div class="product-card__info">' +
               '<h3 class="product-card__name">' + escapeHtml(b.name) + '</h3>' +
+              (b.productNumber ? '<span class="product-card__meta">Product #: ' + escapeHtml(b.productNumber) + '</span>' : '') +
               '<span class="product-card__badge">Available Now</span>' +
               '<span class="product-card__price">' + escapeHtml(b.price) + '</span>' +
               '<div class="product-card__actions">' +
@@ -1633,7 +1736,7 @@
             '" data-product-name="' + escapeHtml(c.name) + ' Adirondack Chair' +
             '" data-product-price="' + chairPriceCents + '">' +
             '<div class="product-card__image">' +
-              '<img src="images/products/' + escapeHtml(chairImg) + '.jpg" alt="' + escapeHtml(c.name) + ' Adirondack Chair" loading="lazy">' +
+              '<img src="' + escapeHtml(resolveProductImageSrc(chairImg)) + '" alt="' + escapeHtml(c.name) + ' Adirondack Chair" loading="lazy">' +
             '</div>' +
             '<div class="product-card__info">' +
               '<h3 class="product-card__name">' + escapeHtml(c.name) + ' Adirondack Chair</h3>' +
@@ -1942,7 +2045,7 @@
     // Load products from Products.md
     loadProductsFromMd();
 
-    // Load boards in stock from BoardsInStock.md
+    // Load in-stock boards from filename convention in images/products/available
     loadBoardsInStock();
 
     // Load chairs from Chairs.md

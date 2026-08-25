@@ -1,0 +1,7 @@
+{
+  "name": "mitchs-hardwoods-website",
+  "private": true,
+  "scripts": {
+    "inventory:build": "node scripts/generate-inventory-manifest.mjs"
+  }
+}
