@@ -1831,7 +1831,27 @@
       slides[currentIdx].classList.remove('product-carousel__slide--active');
       var next = (currentIdx + dir + slides.length) % slides.length;
       slides[next].classList.add('product-carousel__slide--active');
+      updateProductCarouselCount(carousel, next, slides.length);
     });
+
+    document.querySelectorAll('.product-carousel').forEach(function (carousel) {
+      var slides = carousel.querySelectorAll('.product-carousel__slide');
+      if (slides.length < 2) return;
+      var counter = document.createElement('span');
+      counter.className = 'product-carousel__count';
+      counter.setAttribute('aria-live', 'polite');
+      carousel.appendChild(counter);
+      var activeIdx = 0;
+      slides.forEach(function (slide, i) {
+        if (slide.classList.contains('product-carousel__slide--active')) activeIdx = i;
+      });
+      updateProductCarouselCount(carousel, activeIdx, slides.length);
+    });
+  }
+
+  function updateProductCarouselCount(carousel, index, total) {
+    var counter = carousel.querySelector('.product-carousel__count');
+    if (counter) counter.textContent = (index + 1) + '/' + total;
   }
 
   function initProductImageLightbox() {
@@ -1844,6 +1864,7 @@
       '<button type="button" class="product-lightbox__close" aria-label="Close">&times;</button>' +
       '<button type="button" class="product-lightbox__prev" aria-label="Previous photo">&lsaquo;</button>' +
       '<img class="product-lightbox__img" src="" alt="">' +
+      '<span class="product-lightbox__count" aria-live="polite"></span>' +
       '<button type="button" class="product-lightbox__next" aria-label="Next photo">&rsaquo;</button>';
     document.body.appendChild(lightbox);
 
@@ -1851,6 +1872,7 @@
     var lightboxClose = lightbox.querySelector('.product-lightbox__close');
     var lightboxPrev = lightbox.querySelector('.product-lightbox__prev');
     var lightboxNext = lightbox.querySelector('.product-lightbox__next');
+    var lightboxCount = lightbox.querySelector('.product-lightbox__count');
     var lightboxSlides = [];
     var lightboxIdx = 0;
 
@@ -1861,6 +1883,8 @@
       var hasMultiple = lightboxSlides.length > 1;
       lightboxPrev.hidden = !hasMultiple;
       lightboxNext.hidden = !hasMultiple;
+      lightboxCount.hidden = !hasMultiple;
+      lightboxCount.textContent = (lightboxIdx + 1) + '/' + lightboxSlides.length;
     }
 
     function closeLightbox() {
