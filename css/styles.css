@@ -2004,6 +2004,41 @@ p {
   font-size: clamp(1rem, 2vw, 1.125rem);
 }
 
+/* Catalog tabs */
+.catalog-tabs {
+  margin-bottom: var(--space-xl);
+  border-bottom: 1px solid var(--color-border);
+  overflow-x: auto;
+}
+
+.catalog-tabs__list {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.catalog-tabs__tab {
+  appearance: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: var(--space-md) var(--space-lg);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  border-bottom: 3px solid transparent;
+  white-space: nowrap;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.catalog-tabs__tab:hover {
+  color: var(--color-text);
+}
+
+.catalog-tabs__tab[aria-selected="true"] {
+  color: var(--color-accent);
+  border-bottom-color: var(--color-accent);
+}
+
 /* Catalog sections */
 .catalog-section {
   margin-bottom: var(--space-3xl);

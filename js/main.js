@@ -1966,6 +1966,44 @@
     }, 5000);
   }
 
+  function initCatalogTabs() {
+    var tabs = document.querySelectorAll('.catalog-tabs__tab');
+    if (!tabs.length) return;
+
+    function activateTab(tab) {
+      tabs.forEach(function (t) {
+        var isActive = t === tab;
+        t.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        t.tabIndex = isActive ? 0 : -1;
+        var panel = document.getElementById(t.getAttribute('data-tab-target'));
+        if (panel) panel.hidden = !isActive;
+      });
+    }
+
+    tabs.forEach(function (tab, index) {
+      tab.addEventListener('click', function () {
+        activateTab(tab);
+      });
+      tab.addEventListener('keydown', function (e) {
+        var newIndex = null;
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+          newIndex = (index + 1) % tabs.length;
+        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+          newIndex = (index - 1 + tabs.length) % tabs.length;
+        } else if (e.key === 'Home') {
+          newIndex = 0;
+        } else if (e.key === 'End') {
+          newIndex = tabs.length - 1;
+        }
+        if (newIndex !== null) {
+          e.preventDefault();
+          tabs[newIndex].focus();
+          activateTab(tabs[newIndex]);
+        }
+      });
+    });
+  }
+
   // ---- Page Initialization (T016) ----
 
   document.addEventListener('DOMContentLoaded', function () {
@@ -2124,6 +2162,9 @@
 
     // Scroll reveal animations (Rivian-style)
     initScrollReveal();
+
+    // Catalog tabs (Available Now / Design Your Own / Adirondack Chairs)
+    initCatalogTabs();
   });
 
   // ---- Wood Inventory ----

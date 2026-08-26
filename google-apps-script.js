@@ -314,6 +314,7 @@ function processInventoryInbox() {
 
     try {
       var parsed = parseInventorySubject(subject);
+      var isUpdateSubject = /^\s*UPDATE\s*\|/i.test(subject);
       var github = loadGitHubConfig_();
       var actionSummary = '';
 
@@ -362,10 +363,43 @@ function processInventoryInbox() {
           pushedToGitHub: pushed,
           status: 'success'
         });
+      } else if (isUpdateSubject) {
+        var updateInfo = parseInventoryUpdateCommand(message);
+        if (!updateInfo) {
+          throw new Error('Invalid UPDATE subject. Use format: UPDATE | ProductNumber');
+        }
+        if (!github.enabled) {
+          throw new Error('GitHub is not configured. Product update requires GITHUB_TOKEN, GITHUB_OWNER, and GITHUB_REPO script properties.');
+        }
+
+        var imageBlobsForUpdate = getImageAttachments(message);
+        var updateResult = updateInventoryOnGitHub_(github, updateInfo, imageBlobsForUpdate);
+
+        actionSummary =
+          'Inventory email processed successfully.\n\n' +
+          'Action: Update Board\n' +
+          'Product #: ' + updateInfo.productNum + '\n' +
+          'Name: ' + updateInfo.name + '\n' +
+          'Price: ' + updateInfo.price + '\n' +
+          'Quantity: ' + updateInfo.qty + '\n' +
+          (imageBlobsForUpdate.length > 0
+            ? 'New image(s) saved as:\n- ' + updateResult.fileNames.join('\n- ')
+            : 'Existing image(s) renamed to:\n- ' + updateResult.fileNames.join('\n- ')) + '\n\n' +
+          'Original email subject: ' + subject;
+
+        details.push({ action: 'update', subject: subject, productNumber: updateInfo.productNum, fileNames: updateResult.fileNames, removedFiles: updateResult.removedFiles });
+        logInventoryHistory_({
+          action: 'update',
+          productNumber: updateInfo.productNum,
+          subject: subject,
+          fileNames: updateResult.fileNames,
+          removedFiles: updateResult.removedFiles,
+          status: 'success'
+        });
       } else {
         var removal = parseInventoryRemovalCommand(message);
         if (!removal) {
-          throw new Error('Invalid inventory email. Use add: Name | Price | Qty | ProductNumber (ProductNumber optional), remove: REMOVE | ProductNumber, or sold: SOLD | ProductNumber.');
+          throw new Error('Invalid inventory email. Use add: Name | Price | Qty | ProductNumber (ProductNumber optional), update: UPDATE | ProductNumber, remove: REMOVE | ProductNumber, or sold: SOLD | ProductNumber.');
         }
         if (!github.enabled) {
           throw new Error('GitHub is not configured. Product removal requires GITHUB_TOKEN, GITHUB_OWNER, and GITHUB_REPO script properties.');
@@ -418,14 +452,19 @@ function processInventoryInbox() {
         'Error: ' + err.message + '\n\n' +
         'Expected formats:\n' +
         '1) Add board: Name | Price | Qty | ProductNumber (ProductNumber optional)\n' +
-        '2) Remove board: REMOVE | ProductNumber\n' +
-        '3) Sold board: SOLD | ProductNumber\n\n' +
+        '2) Update board: UPDATE | ProductNumber (with Name, Price, Quantity in the body)\n' +
+        '3) Remove board: REMOVE | ProductNumber\n' +
+        '4) Sold board: SOLD | ProductNumber\n\n' +
         'Examples:\n' +
         'Walnut with Wenge and Maple Stripe | 100 | 1 | 0003\n' +
         'Walnut with Wenge and Maple Stripe | 100 | 1 |\n' +
+        'UPDATE | 0003\n' +
+        '  Name: Walnut with Wenge and Maple Stripe\n' +
+        '  Price: 120\n' +
+        '  Quantity: 1\n' +
         'REMOVE | 0003\n' +
         'SOLD | 0003\n\n' +
-        'Attach one or more images. Multiple images will be saved as -01, -02, etc.\n\n' +
+        'Attach one or more images. Multiple images will be saved as -01, -02, etc. Attaching new images on an UPDATE email replaces the existing ones; leaving images off keeps the existing photos.\n\n' +
         'Original subject:\n' + subject;
 
       MailApp.sendEmail({
@@ -503,6 +542,116 @@ function parseInventoryRemovalCommand(message) {
   }
 
   return null;
+}
+
+function parseInventoryUpdateCommand(message) {
+  var subject = String(message.getSubject() || '').trim();
+  var subjectMatch = subject.match(/^\s*UPDATE\s*\|\s*([A-Za-z0-9]+)\s*$/i);
+  if (!subjectMatch) return null;
+
+  var body = String(message.getPlainBody ? message.getPlainBody() : '');
+  var nameMatch = body.match(/^\s*name\s*[:|-]\s*(.+?)\s*$/im);
+  var priceMatch = body.match(/^\s*price\s*[:|-]\s*\$?\s*(\d+(?:\.\d{1,2})?)/im);
+  var qtyMatch = body.match(/^\s*(?:qty|quantity)\s*[:|-]\s*(\d+)/im);
+
+  if (!nameMatch || !priceMatch || !qtyMatch) {
+    throw new Error('UPDATE email body must include Name, Price, and Quantity lines (e.g. "Name: Walnut Board", "Price: 150", "Quantity: 2").');
+  }
+
+  var priceNum = parseFloat(priceMatch[1]);
+  var qtyNum = parseInt(qtyMatch[1], 10);
+  if (isNaN(priceNum) || priceNum <= 0) {
+    throw new Error('UPDATE email Price must be a positive number.');
+  }
+  if (isNaN(qtyNum) || qtyNum <= 0) {
+    throw new Error('UPDATE email Quantity must be a positive whole number.');
+  }
+
+  return {
+    productNum: subjectMatch[1],
+    name: nameMatch[1].trim(),
+    price: priceNum,
+    qty: qtyNum
+  };
+}
+
+function updateInventoryOnGitHub_(cfg, updateInfo, imageBlobs) {
+  var dirPath = 'images/products/available';
+  var normalizedProduct = String(updateInfo.productNum || '').toLowerCase();
+  var imagePattern = /^.+-\d+(?:\.\d{1,2})?-\d+-([A-Za-z0-9]+)(?:-(\d+))?\.(?:jpe?g|png|webp)$/i;
+  var entries = listGitHubDirectory_(cfg, dirPath);
+  var existingFiles = [];
+
+  for (var i = 0; i < entries.length; i++) {
+    var entry = entries[i];
+    if (!entry || entry.type !== 'file') continue;
+    var m = String(entry.name || '').match(imagePattern);
+    if (!m) continue;
+    if (String(m[1]).toLowerCase() === normalizedProduct) {
+      existingFiles.push({ entry: entry, index: m[2] ? parseInt(m[2], 10) : 1 });
+    }
+  }
+  existingFiles.sort(function (a, b) { return a.index - b.index; });
+
+  var newParsed = { name: updateInfo.name, price: updateInfo.price, qty: updateInfo.qty, productNum: updateInfo.productNum };
+  var newFileNames = [];
+
+  if (imageBlobs && imageBlobs.length > 0) {
+    // Replace all existing photos with the newly attached ones
+    for (var d = 0; d < existingFiles.length; d++) {
+      deleteGitHubFile_(cfg, existingFiles[d].entry.path, existingFiles[d].entry.sha, 'Remove old inventory image before update: ' + existingFiles[d].entry.name);
+    }
+
+    for (var a = 0; a < imageBlobs.length; a++) {
+      var ext = getExtensionFromBlob(imageBlobs[a]);
+      var fileName = buildInventoryFileName(newParsed, ext, a + 1, imageBlobs.length);
+      pushInventoryImageToGitHub_(cfg, fileName, imageBlobs[a]);
+      newFileNames.push(fileName);
+    }
+  } else {
+    if (existingFiles.length === 0) {
+      throw new Error('No existing inventory images found for Product #' + updateInfo.productNum + '. Attach at least one image to add it as new.');
+    }
+
+    // No new photos attached: keep existing photos, just rename them to reflect the new Name/Price/Qty
+    for (var e = 0; e < existingFiles.length; e++) {
+      var oldEntry = existingFiles[e].entry;
+      var extMatch = String(oldEntry.name).match(/\.(jpe?g|png|webp)$/i);
+      var oldExt = extMatch ? (extMatch[1].toLowerCase() === 'jpeg' ? 'jpg' : extMatch[1].toLowerCase()) : 'jpg';
+      var newFileName = buildInventoryFileName(newParsed, oldExt, e + 1, existingFiles.length);
+      if (newFileName !== oldEntry.name) {
+        copyGitHubFile_(cfg, oldEntry.path, dirPath + '/' + newFileName, 'Rename inventory image for update: ' + oldEntry.name + ' -> ' + newFileName);
+        deleteGitHubFile_(cfg, oldEntry.path, oldEntry.sha, 'Remove old inventory image after rename: ' + oldEntry.name);
+      }
+      newFileNames.push(newFileName);
+    }
+  }
+
+  removeInventoryFromManifestOnGitHub_(cfg, normalizedProduct);
+  updateInventoryManifestOnGitHub_(cfg, newFileNames);
+
+  return {
+    fileNames: newFileNames,
+    removedFiles: existingFiles.map(function (f) { return f.entry.name; })
+  };
+}
+
+function copyGitHubFile_(cfg, oldPath, newPath, message) {
+  var existing = getGitHubFileIfExists_(cfg, oldPath);
+  if (!existing || !existing.content) {
+    throw new Error('Could not read existing file to copy: ' + oldPath);
+  }
+
+  var payload = {
+    message: message || ('Copy ' + oldPath + ' to ' + newPath),
+    content: existing.content.replace(/\n/g, ''),
+    branch: cfg.branch
+  };
+
+  var existingAtNewPath = getGitHubFileIfExists_(cfg, newPath);
+  if (existingAtNewPath && existingAtNewPath.sha) payload.sha = existingAtNewPath.sha;
+
+  putGitHubFile_(cfg, newPath, payload);
 }
 
 function resolveInventoryProductNumber_(parsed, github) {
@@ -827,6 +976,7 @@ function buildInventoryHistoryDashboard(accessKey) {
   var history = getInventoryHistoryLog_();
   var soldRecords = getSoldInventoryRecords_();
   var totalAdds = 0;
+  var totalUpdates = 0;
   var totalRemoves = 0;
   var totalSold = 0;
   var totalErrors = 0;
@@ -834,6 +984,7 @@ function buildInventoryHistoryDashboard(accessKey) {
   for (var i = 0; i < history.length; i++) {
     var action = String(history[i].action || '').toLowerCase();
     if (action === 'add') totalAdds += 1;
+    if (action === 'update') totalUpdates += 1;
     if (action === 'remove') totalRemoves += 1;
     if (action === 'sold') totalSold += 1;
     if (action === 'error') totalErrors += 1;
@@ -860,6 +1011,7 @@ function buildInventoryHistoryDashboard(accessKey) {
     '.table th{background:#1b1b1b;color:rgba(255,255,255,.75);font-weight:600;}' +
     '.pill{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700;text-transform:uppercase;}' +
     '.pill-add{background:#21452a;color:#8dd39e;}' +
+    '.pill-update{background:#1f3a52;color:#8ec9f6;}' +
     '.pill-remove{background:#4b2d12;color:#f6c690;}' +
     '.pill-sold{background:#3b234d;color:#d8b4fe;}' +
     '.pill-error{background:#4b1d1d;color:#ffb4b4;}' +
@@ -867,9 +1019,10 @@ function buildInventoryHistoryDashboard(accessKey) {
     '.empty{padding:24px;text-align:center;color:rgba(255,255,255,.5);}' +
     '</style></head><body><div class="wrap">' +
     '<h1>Inventory History</h1>' +
-    '<p class="sub">Full historical log of add, remove, sold, and error events.</p>' +
+    '<p class="sub">Full historical log of add, update, remove, sold, and error events.</p>' +
     '<div class="stats">' +
       '<div class="stat"><div class="label">Adds</div><div class="value">' + totalAdds + '</div></div>' +
+      '<div class="stat"><div class="label">Updates</div><div class="value">' + totalUpdates + '</div></div>' +
       '<div class="stat"><div class="label">Removes</div><div class="value">' + totalRemoves + '</div></div>' +
       '<div class="stat"><div class="label">Sold</div><div class="value">' + totalSold + '</div></div>' +
       '<div class="stat"><div class="label">Errors</div><div class="value">' + totalErrors + '</div></div>' +
@@ -887,7 +1040,7 @@ function buildInventoryHistoryDashboard(accessKey) {
     for (var h = history.length - 1; h >= 0; h--) {
       var row = history[h];
       var actionLabel = String(row.action || '').toLowerCase();
-      var pillClass = actionLabel === 'add' ? 'pill-add' : (actionLabel === 'remove' ? 'pill-remove' : (actionLabel === 'sold' ? 'pill-sold' : 'pill-error'));
+      var pillClass = actionLabel === 'add' ? 'pill-add' : (actionLabel === 'update' ? 'pill-update' : (actionLabel === 'remove' ? 'pill-remove' : (actionLabel === 'sold' ? 'pill-sold' : 'pill-error')));
       var dt = row.at ? new Date(row.at).toLocaleString() : 'N/A';
       var detailParts = [];
       if (row.fileNames && row.fileNames.length) detailParts.push('files: ' + row.fileNames.join(', '));

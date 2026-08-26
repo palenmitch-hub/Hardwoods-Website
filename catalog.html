@@ -44,8 +44,17 @@
         <p>Handcrafted with care in Woodstock, GA</p>
       </div>
 
+      <!-- ==================== CATALOG TABS ==================== -->
+      <div class="catalog-tabs">
+        <div class="catalog-tabs__list" role="tablist" aria-label="Catalog categories">
+          <button type="button" class="catalog-tabs__tab" id="tab-available" role="tab" aria-selected="true" aria-controls="panel-available" data-tab-target="panel-available">Available Now</button>
+          <button type="button" class="catalog-tabs__tab" id="tab-design" role="tab" aria-selected="false" aria-controls="panel-design" tabindex="-1" data-tab-target="panel-design">Design Your Own</button>
+          <button type="button" class="catalog-tabs__tab" id="tab-chairs" role="tab" aria-selected="false" aria-controls="panel-chairs" tabindex="-1" data-tab-target="panel-chairs">Adirondack Chairs</button>
+        </div>
+      </div>
+
       <!-- ==================== AVAILABLE NOW ==================== -->
-      <section class="catalog-section">
+      <section class="catalog-section catalog-tabpanel" id="panel-available" role="tabpanel" aria-labelledby="tab-available" tabindex="0">
         <h2>Available Now</h2>
         <p class="catalog-section__subtitle">These boards are ready to ship — grab them before they're gone! Pictures are of the actual board you will receive! </p>
         <div class="product-grid" id="in-stock-grid">
@@ -54,7 +63,7 @@
       </section>
 
       <!-- ==================== DESIGN YOUR OWN BOARD ==================== -->
-      <section class="catalog-section custom-builder" id="design-your-own">
+      <section class="catalog-section catalog-tabpanel custom-builder" id="panel-design" role="tabpanel" aria-labelledby="tab-design" tabindex="0" hidden>
         <h2>Design Your Own Board</h2>
         <p class="catalog-section__subtitle">Pick a style you like below and click the See All Options button to fully customize that style of board! Expect 1-3 week lead times for all custom ordered boards.</p>
 
@@ -217,7 +226,7 @@
       </section>
 
       <!-- ==================== ADIRONDACK CHAIRS ==================== -->
-      <section class="catalog-section">
+      <section class="catalog-section catalog-tabpanel" id="panel-chairs" role="tabpanel" aria-labelledby="tab-chairs" tabindex="0" hidden>
         <h2>Adirondack Chairs</h2>
         <p class="catalog-section__subtitle">All Adirondack chairs are built to order. Expect 4-8 week lead times for chair orders.</p>
         <div class="product-grid" id="chairs-grid">

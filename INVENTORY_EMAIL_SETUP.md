@@ -44,6 +44,27 @@ Example:
 - REMOVE | 0003
 - SOLD | 0003
 
+To update an existing board's Name, Price, and/or Quantity, use subject format:
+- UPDATE | ProductNumber
+
+Put the new details in the email body, one per line:
+```
+Name: Walnut with Wenge and Maple Stripe
+Price: 120
+Quantity: 1
+```
+
+- If you attach new image(s) to an UPDATE email, they replace all existing photos for that product number.
+- If you don't attach any images, the existing photos are kept and simply renamed to match the updated Name/Price/Qty.
+- All three body fields (Name, Price, Quantity) are required.
+
+Example:
+- Subject: UPDATE | 0003
+- Body:
+  - Name: Walnut with Wenge and Maple Stripe
+  - Price: 120
+  - Quantity: 1
+
 If you leave ProductNumber blank on add emails, the script auto-assigns the next available number.
 
 Examples:
@@ -100,26 +121,28 @@ POST to your Apps Script web app URL with JSON:
 
 For each valid email in `MitchHardwoods/Inventory/New`:
 1. Subject is parsed.
-2. If action is Add/Update:
-   - Image attachment(s) are validated.
-3. Filename is generated as:
-   - One image: `name-price-qty-product#.ext`
-   - Multiple images: `name-price-qty-product#-01.ext`, `...-02.ext`, etc.
-4. If GitHub is configured:
-   - Image is uploaded to `images/products/available/`
-   - `images/products/available/inventory-manifest.json` is updated
-5. If action is Remove:
+2. If action is Add (`Name | Price | Qty | ProductNumber`):
+   - Image attachment(s) are required and validated.
+   - Filename is generated as:
+     - One image: `name-price-qty-product#.ext`
+     - Multiple images: `name-price-qty-product#-01.ext`, `...-02.ext`, etc.
+   - If GitHub is configured, images are uploaded to `images/products/available/` and `inventory-manifest.json` is updated.
+3. If action is Update (`UPDATE | ProductNumber` + Name/Price/Quantity in the body):
+   - If image(s) are attached, they replace all existing photos for that product number.
+   - If no images are attached, existing photos are kept and renamed to match the new Name/Price/Qty.
+   - Old manifest entries for that product number are removed and replaced with the new filenames.
+4. If action is Remove:
    - All inventory image files matching `product#` are deleted from `images/products/available/`
    - Matching entries are removed from `images/products/available/inventory-manifest.json`
-6. If action is Sold:
+5. If action is Sold:
    - Same inventory removal behavior as Remove
    - A sold record is saved in Apps Script `ScriptProperties` with `productNumber`, timestamp, and removed filenames
-7. Thread is labeled Processed and marked read.
-8. Owner gets a summary email.
+6. Thread is labeled Processed and marked read.
+7. Owner gets a summary email.
 
 ## 8) Error Handling
 
-If the email format is wrong, no image is attached (for Add), or product number is not found (for Remove/Sold):
+If the email format is wrong, no image is attached (for Add), required fields are missing (for Update), or product number is not found (for Remove/Sold/Update):
 - Thread gets label `MitchHardwoods/Inventory/Error`
 - Owner gets an "Inventory Processing Error" email with required format.
 
@@ -134,6 +157,7 @@ Customers can:
 
 The script now keeps a complete inventory history log of:
 - Add events
+- Update events
 - Remove events
 - Sold events
 - Processing errors
