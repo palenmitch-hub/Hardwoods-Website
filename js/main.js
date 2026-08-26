@@ -153,6 +153,10 @@
         if (o.accentWood) optionsHtml += '<span>Accent: ' + escapeHtml(o.accentWood) + '</span>';
         if (o.handles) optionsHtml += '<span>Handles: Yes (+$10)</span>';
         if (o.feet && o.feet !== 'none') optionsHtml += '<span>Feet: ' + escapeHtml(o.feet) + (o.feet === 'Basic' ? ' (+$5)' : ' (+$20)') + '</span>';
+        if (o.epoxyColor) optionsHtml += '<span>Epoxy Color: ' + escapeHtml(o.epoxyColor) + '</span>';
+        if (o.size) optionsHtml += '<span>Size: ' + escapeHtml(o.size) + '</span>';
+        if (o.charcuterieHandles) optionsHtml += '<span>Handles: Yes</span>';
+        if (o.charcuterieFeet) optionsHtml += '<span>Feet: ' + escapeHtml(o.charcuterieFeet) + (o.charcuterieFeet === 'Brass' ? ' (+$20)' : '') + '</span>';
         if (o.engravingLines) {
           var lines = o.engravingLines;
           var engParts = [];
@@ -447,6 +451,10 @@
         if (item.options.accentWood) parts.push('Accent: ' + item.options.accentWood);
         if (item.options.handles) parts.push('Handles: Yes');
         if (item.options.feet) parts.push('Feet: ' + item.options.feet);
+        if (item.options.epoxyColor) parts.push('Epoxy Color: ' + item.options.epoxyColor);
+        if (item.options.size) parts.push('Size: ' + item.options.size);
+        if (item.options.charcuterieHandles) parts.push('Handles: Yes');
+        if (item.options.charcuterieFeet) parts.push('Feet: ' + item.options.charcuterieFeet);
         if (item.options.engravingLines) {
           var el = item.options.engravingLines;
           var engParts = [];
@@ -2704,6 +2712,306 @@
     '</button>';
   }
 
+  // ---- Epoxy River Charcuterie Board Options Modal ----
+
+  function showCharcuterieOptionsModal(productName, basePrice, productId, callback) {
+    var old = document.getElementById('char-options-modal');
+    if (old) old.remove();
+
+    var BRASS_FEET_PRICE = 2000;
+    var ENGRAVING_PRICE_OPT = 1000;
+    var SIZE_PRICES = {
+      'Standard 10x16': 0,
+      'Large 11x20': 2000,
+      'Set 10x10 and 10x14': 4000
+    };
+
+    var FEET_INFO = 'Basic feet are just small black ruberized feet and the Brass Feet are actual metal (brass) feet with a rubber O ring inlayed that adds another level of beauty and function. No extra charge for Basic feet.';
+    var HANDLES_INFO = 'These are cutout from the sides of the board to make it easier to pick up, these are NOT physical handles that are attached or added on. No extra charge for handles.';
+    var ENGRAVING_INFO = 'Choose your font, type out your message, and choose where on the board you would like it! Feel free to use multiple levels and alignments to make it your own!';
+
+    var modal = document.createElement('div');
+    modal.id = 'char-options-modal';
+    modal.className = 'board-options-modal';
+
+    var dialogHtml =
+      '<div class="board-options-modal__backdrop"></div>' +
+      '<div class="board-options-modal__dialog" role="dialog" aria-labelledby="char-opt-title" aria-modal="true">' +
+        '<button type="button" class="board-options-modal__close" aria-label="Close">&times;</button>' +
+        '<h3 id="char-opt-title">' + escapeHtml(productName) + '</h3>' +
+        '<p class="board-options-modal__subtitle">Customize your charcuterie board</p>' +
+        '<span class="board-options-modal__price" id="char-opt-price">' + formatPrice(basePrice) + '</span>' +
+
+        // Size
+        '<div class="board-opt-group">' +
+          '<label class="board-opt-group__label" for="char-size">Size</label>' +
+          '<select id="char-size">' +
+            '<option value="Standard 10x16">Standard 10x16</option>' +
+            '<option value="Large 11x20">Large 11x20 (+$20)</option>' +
+            '<option value="Set 10x10 and 10x14">Set 10x10 and 10x14 (+$40)</option>' +
+          '</select>' +
+        '</div>' +
+
+        // Epoxy Color
+        '<div class="board-opt-group">' +
+          '<label class="board-opt-group__label" for="char-epoxy-color">Epoxy Color</label>' +
+          '<select id="char-epoxy-color">' +
+            '<option value="Clear">Clear</option>' +
+            '<option value="Ocean Blue">Ocean Blue</option>' +
+            '<option value="Turquoise">Turquoise</option>' +
+            '<option value="Black">Black</option>' +
+            '<option value="White">White</option>' +
+            '<option value="Gold Shimmer">Gold Shimmer</option>' +
+            '<option value="Green">Green</option>' +
+            '<option value="Red">Red</option>' +
+            '<option value="Purple">Purple</option>' +
+          '</select>' +
+        '</div>' +
+
+        // Handles
+        '<div class="board-opt-group">' +
+          '<span class="board-opt-group__label">Handles ' + buildInfoBubble(HANDLES_INFO) + '</span>' +
+          '<div class="board-opt-radios">' +
+            '<div class="board-opt-radio">' +
+              '<input type="radio" id="char-handles-no" name="charHandles" value="no" checked>' +
+              '<label for="char-handles-no">No</label>' +
+            '</div>' +
+            '<div class="board-opt-radio">' +
+              '<input type="radio" id="char-handles-yes" name="charHandles" value="yes">' +
+              '<label for="char-handles-yes">Yes</label>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
+        // Feet
+        '<div class="board-opt-group">' +
+          '<span class="board-opt-group__label">Feet ' + buildInfoBubble(FEET_INFO) + '</span>' +
+          '<div class="board-opt-radios">' +
+            '<div class="board-opt-radio">' +
+              '<input type="radio" id="char-feet-none" name="charFeet" value="none" checked>' +
+              '<label for="char-feet-none">No Feet</label>' +
+            '</div>' +
+            '<div class="board-opt-radio">' +
+              '<input type="radio" id="char-feet-basic" name="charFeet" value="basic">' +
+              '<label for="char-feet-basic">Basic Feet</label>' +
+            '</div>' +
+            '<div class="board-opt-radio">' +
+              '<input type="radio" id="char-feet-brass" name="charFeet" value="brass">' +
+              '<label for="char-feet-brass">Brass Feet<span class="opt-price">+$20</span></label>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
+        // Engraving
+        '<div class="board-engraving-section">' +
+          '<div class="board-opt-group">' +
+            '<span class="board-opt-group__label">Custom Engraving ' + buildInfoBubble(ENGRAVING_INFO) + '</span>' +
+            '<div class="board-opt-radios">' +
+              '<div class="board-opt-radio">' +
+                '<input type="radio" id="char-eng-no" name="charEng" value="no" checked>' +
+                '<label for="char-eng-no">No</label>' +
+              '</div>' +
+              '<div class="board-opt-radio">' +
+                '<input type="radio" id="char-eng-yes" name="charEng" value="yes">' +
+                '<label for="char-eng-yes">Yes<span class="opt-price">+$10</span></label>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="board-engraving-fields" id="char-eng-fields">' +
+            '<div class="board-opt-group">' +
+              '<span class="board-opt-group__label">Engraving Placement</span>' +
+              '<div class="board-opt-radios">' +
+                '<div class="board-opt-radio">' +
+                  '<input type="radio" id="char-eng-front" name="charEngPlacement" value="front">' +
+                  '<label for="char-eng-front">Front of Board</label>' +
+                '</div>' +
+                '<div class="board-opt-radio">' +
+                  '<input type="radio" id="char-eng-back" name="charEngPlacement" value="back">' +
+                  '<label for="char-eng-back">Back of Board</label>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+            '<div class="board-opt-group">' +
+              '<label class="board-opt-group__label" for="char-eng-font">Font</label>' +
+              '<select id="char-eng-font">' +
+                '<option value="serif">Serif (Classic)</option>' +
+                '<option value="sans-serif">Sans-Serif (Modern)</option>' +
+                '<option value="script">Script (Elegant)</option>' +
+                '<option value="monospace">Monospace (Clean)</option>' +
+              '</select>' +
+            '</div>' +
+            '<div class="engraving-row"><div>' +
+              '<label for="char-eng-top">Top Line</label>' +
+              '<input type="text" id="char-eng-top" maxlength="40" placeholder="e.g. The Johnson Family">' +
+            '</div><div>' +
+              '<label for="char-eng-top-align">Align</label>' +
+              '<select id="char-eng-top-align"><option value="center">Center</option><option value="left">Left</option><option value="right">Right</option></select>' +
+            '</div></div>' +
+            '<div class="engraving-row"><div>' +
+              '<label for="char-eng-bot">Bottom Line</label>' +
+              '<input type="text" id="char-eng-bot" maxlength="40" placeholder="e.g. Made with Love">' +
+            '</div><div>' +
+              '<label for="char-eng-bot-align">Align</label>' +
+              '<select id="char-eng-bot-align"><option value="center">Center</option><option value="left">Left</option><option value="right">Right</option></select>' +
+            '</div></div>' +
+            '<div class="engraving-preview" id="char-eng-preview">' +
+              '<div class="engraving-preview__line engraving-preview__line--empty" id="char-prev-top">&nbsp;</div>' +
+              '<div class="engraving-preview__line engraving-preview__line--empty" id="char-prev-bot">&nbsp;</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
+        '<div class="board-options-modal__actions">' +
+          '<button type="button" class="btn btn--outline" id="char-opt-cancel">Cancel</button>' +
+          '<button type="button" class="btn btn--accent" id="char-opt-add">Add to Cart</button>' +
+        '</div>' +
+      '</div>';
+
+    modal.innerHTML = dialogHtml;
+    document.body.appendChild(modal);
+    document.body.style.overflow = 'hidden';
+
+    var backdrop = modal.querySelector('.board-options-modal__backdrop');
+    var closeBtn = modal.querySelector('.board-options-modal__close');
+    var cancelBtn = document.getElementById('char-opt-cancel');
+    var addBtn = document.getElementById('char-opt-add');
+    var livePrice = document.getElementById('char-opt-price');
+
+    // Engraving toggle
+    var engFields = document.getElementById('char-eng-fields');
+    var engRadios = modal.querySelectorAll('input[name="charEng"]');
+    engRadios.forEach(function (r) {
+      r.addEventListener('change', function () {
+        if (r.value === 'yes') {
+          engFields.classList.add('board-engraving-fields--visible');
+        } else {
+          engFields.classList.remove('board-engraving-fields--visible');
+        }
+        updatePrice();
+      });
+    });
+
+    // Engraving preview
+    var charEngTopInput = document.getElementById('char-eng-top');
+    var charEngBotInput = document.getElementById('char-eng-bot');
+    var charEngTopAlign = document.getElementById('char-eng-top-align');
+    var charEngBotAlign = document.getElementById('char-eng-bot-align');
+    var charEngFont = document.getElementById('char-eng-font');
+    var charPrevTop = document.getElementById('char-prev-top');
+    var charPrevBot = document.getElementById('char-prev-bot');
+    var charEngPreview = document.getElementById('char-eng-preview');
+
+    var CHAR_FONT_MAP = {
+      'serif': 'Georgia, "Times New Roman", serif',
+      'sans-serif': '"Inter", Arial, sans-serif',
+      'script': '"Brush Script MT", "Segoe Script", cursive',
+      'monospace': '"Courier New", Courier, monospace'
+    };
+
+    function updateCharPreview() {
+      updateCharPreviewLine(charPrevTop, charEngTopInput.value, charEngTopAlign.value);
+      updateCharPreviewLine(charPrevBot, charEngBotInput.value, charEngBotAlign.value);
+      charEngPreview.style.fontFamily = CHAR_FONT_MAP[charEngFont.value] || '';
+    }
+
+    function updateCharPreviewLine(el, text, align) {
+      var t = text.trim();
+      if (t) {
+        el.textContent = t;
+        el.classList.remove('engraving-preview__line--empty');
+      } else {
+        el.innerHTML = '&nbsp;';
+        el.classList.add('engraving-preview__line--empty');
+      }
+      el.style.textAlign = align;
+    }
+
+    [charEngTopInput, charEngBotInput].forEach(function (inp) {
+      inp.addEventListener('input', updateCharPreview);
+    });
+    [charEngTopAlign, charEngBotAlign, charEngFont].forEach(function (sel) {
+      sel.addEventListener('change', updateCharPreview);
+    });
+
+    function calcPrice() {
+      var total = basePrice;
+      var size = document.getElementById('char-size').value;
+      total += SIZE_PRICES[size] || 0;
+      var feet = modal.querySelector('input[name="charFeet"]:checked');
+      if (feet && feet.value === 'brass') total += BRASS_FEET_PRICE;
+      var eng = modal.querySelector('input[name="charEng"]:checked');
+      if (eng && eng.value === 'yes') total += ENGRAVING_PRICE_OPT;
+      return total;
+    }
+
+    function updatePrice() {
+      livePrice.textContent = formatPrice(calcPrice());
+    }
+
+    modal.querySelectorAll('input[type="radio"]').forEach(function (r) {
+      r.addEventListener('change', updatePrice);
+    });
+    document.getElementById('char-size').addEventListener('change', updatePrice);
+
+    function cleanup() {
+      modal.remove();
+      document.body.style.overflow = '';
+    }
+
+    backdrop.addEventListener('click', cleanup);
+    closeBtn.addEventListener('click', cleanup);
+    cancelBtn.addEventListener('click', cleanup);
+    modal.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') cleanup();
+    });
+
+    addBtn.addEventListener('click', function () {
+      var feetVal = modal.querySelector('input[name="charFeet"]:checked').value;
+      var handlesVal = modal.querySelector('input[name="charHandles"]:checked').value;
+      var engVal = modal.querySelector('input[name="charEng"]:checked').value;
+      var options = {
+        size: document.getElementById('char-size').value,
+        epoxyColor: document.getElementById('char-epoxy-color').value,
+        charcuterieHandles: handlesVal === 'yes',
+        charcuterieFeet: feetVal === 'none' ? null : (feetVal === 'basic' ? 'Basic' : 'Brass'),
+        engravingLines: null
+      };
+
+      if (engVal === 'yes') {
+        var placement = modal.querySelector('input[name="charEngPlacement"]:checked');
+        if (!placement) {
+          var placementLabels = modal.querySelectorAll('input[name="charEngPlacement"]');
+          placementLabels.forEach(function (r) {
+            var lbl = r.nextElementSibling;
+            if (lbl) lbl.classList.add('board-opt-error-radio');
+          });
+          showToast('Please select engraving placement (Front or Back)');
+          return;
+        }
+        var topText = document.getElementById('char-eng-top').value.trim();
+        var botText = document.getElementById('char-eng-bot').value.trim();
+        if (!topText && !botText) {
+          showToast('Please enter at least one engraving line');
+          return;
+        }
+        options.engravingLines = {
+          placement: placement.value,
+          top: topText || '',
+          topAlign: document.getElementById('char-eng-top-align').value,
+          bottom: botText || '',
+          bottomAlign: document.getElementById('char-eng-bot-align').value,
+          font: document.getElementById('char-eng-font').value
+        };
+      }
+
+      var finalPrice = calcPrice();
+      callback(options, finalPrice);
+      cleanup();
+    });
+
+    closeBtn.focus();
+  }
+
   function showBoardOptionsModal(productName, basePrice, qty, productId, callback) {
     var old = document.getElementById('board-options-modal');
     if (old) old.remove();
@@ -3908,9 +4216,16 @@
       var name = card.getAttribute('data-product-name');
       var price = parseInt(card.getAttribute('data-product-price'), 10);
       var patternBoard = card.getAttribute('data-pattern-board');
+      var isCharcuterie = card.getAttribute('data-custom-pattern') === 'charcuterie';
       if (!name || isNaN(price)) return;
 
-      if (patternBoard) {
+      if (isCharcuterie) {
+        showCharcuterieOptionsModal(name, price, id, function (options, finalPrice) {
+          addToCart(id, name, finalPrice, 1, undefined, options);
+          updateCartBadge();
+          showToast('1x ' + name + ' added to cart');
+        });
+      } else if (patternBoard) {
         showPatternBoardOptionsModal(name, price, 1, id, patternBoard === 'color', function (options, finalPrice) {
           addToCart(id, name, finalPrice, 1, undefined, options);
           updateCartBadge();

@@ -1,0 +1,44 @@
+name: Generate image manifests
+
+on:
+  push:
+    branches: [001-woodworking-shop-website]
+    paths:
+      - 'images/gallery/**'
+      - 'images/hero/**'
+      - 'scripts/generate-gallery-manifest.mjs'
+      - 'scripts/generate-hero-manifest.mjs'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  generate-manifests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Generate gallery manifest
+        run: node scripts/generate-gallery-manifest.mjs
+
+      - name: Generate hero manifest
+        run: node scripts/generate-hero-manifest.mjs
+
+      - name: Commit manifest changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add images/gallery/gallery-manifest.json images/hero/hero-manifest.json
+          if git diff --cached --quiet; then
+            echo "No manifest changes to commit."
+          else
+            git commit -m "chore: auto-update image manifests [skip ci]"
+            git push
+          fi
