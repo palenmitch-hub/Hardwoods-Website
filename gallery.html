@@ -43,10 +43,21 @@
       <p>Drag or scroll to explore — hover to interact</p>
     </section>
 
+    <div class="container">
+      <div class="catalog-tabs">
+        <div class="catalog-tabs__list" role="tablist" aria-label="Gallery categories">
+          <button type="button" class="catalog-tabs__tab" id="gallery-tab-boards" role="tab" aria-selected="true" aria-controls="gallery-scroll" data-gallery-category="boards">Boards</button>
+          <button type="button" class="catalog-tabs__tab" id="gallery-tab-chairs" role="tab" aria-selected="false" aria-controls="gallery-scroll" tabindex="-1" data-gallery-category="chairs">Chairs</button>
+          <button type="button" class="catalog-tabs__tab" id="gallery-tab-other" role="tab" aria-selected="false" aria-controls="gallery-scroll" tabindex="-1" data-gallery-category="other">Other Projects</button>
+        </div>
+      </div>
+    </div>
+
     <section class="gallery-scroll" id="gallery-scroll" aria-label="Photo gallery">
       <div class="gallery-scroll__track" id="gallery-track">
         <!-- Populated dynamically by JS -->
       </div>
+      <p class="gallery-scroll__empty" id="gallery-empty" hidden>No photos in this category yet.</p>
     </section>
 
     <!-- Lightbox -->

@@ -3404,6 +3404,9 @@
     backBtn.addEventListener('click', showIntro);
 
     patterns.addEventListener('click', function (e) {
+      // Let the carousel prev/next controls flip photos without selecting the pattern
+      if (e.target.closest('.product-carousel__prev, .product-carousel__next')) return;
+
       var card = e.target.closest('.custom-pattern-card');
       if (!card) return;
 
@@ -3427,6 +3430,16 @@
         });
       }
     });
+
+    // Cards are divs with role="button" now (so the carousel prev/next can be real buttons inside)
+    patterns.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      if (e.target.closest('.product-carousel__prev, .product-carousel__next')) return;
+      var card = e.target.closest('.custom-pattern-card');
+      if (!card) return;
+      e.preventDefault();
+      card.click();
+    });
   }
 
   // ---- Gallery Slideshow ----
@@ -3434,68 +3447,182 @@
   function initGallerySlideshow() {
     var track = document.getElementById('gallery-track');
     if (!track) return;
+    var scrollSection = document.getElementById('gallery-scroll');
+    var emptyMsg = document.getElementById('gallery-empty');
 
-    // Image sources from across the site
-    var imageSources = [
-      { dir: 'images/gallery/', files: [
-        'Basic Cherry with Stripe.jpg',
-        'Basic Walnut with Stipe.jpg',
-        'Brick Pattern.jpg',
-        'Checkered Pattern.jpg',
-        'Intricate Large Weave.jpg',
-        'Intricate Tight Weave.jpg',
-        'Intricate Zigzag.jpg'
-      ]},
-      { dir: 'images/products/', files: [
+    // Curated site photos that stay in the gallery regardless of inventory changes
+    var staticImageSources = [
+      { dir: 'images/products/design/', category: 'boards', files: [
         'bas-1stripe1.jpg', 'bas-1stripe2.jpg', 'bas-1stripe3.jpg', 'bas-1stripe4.jpg',
         'bas-multistripe1.jpg', 'bas-multistripe2.jpg',
         'bas-spor1.jpg', 'bas-spor2.jpg', 'bas-spor2eng.jpg', 'bas-spor3.jpg', 'bas-spor3eng.jpg',
         'bas-stripe3eng.jpg',
-        'cherry-wenge.jpg', 'walnut-wenge.jpg',
+        'lg-basket-walnut.jpg', 'lg-basket-walnut2.jpg', 'lg-basket-purp.jpg', 'lg-basket-purp2.jpg',
+        'purple-basket.jpg', 'purple-basket2.jpg',
+        'zigzag1.jpg', 'zigzag2.jpg', 'zigzag3.jpg'
+      ]},
+      { dir: 'images/products/chairs/', category: 'chairs', files: [
         'easy-rider-grey.jpg', 'easy-rider-grey2.jpg',
         'high-top.jpg',
         'low-rider-grey.jpg', 'low-rider-grey2.jpg',
         'rocker-2tone.jpg', 'rocker-2tone2.jpg', 'rocker-grey.jpg', 'rocker-grey2.jpg'
       ]},
-      { dir: 'images/hero/', files: [
+      { dir: 'images/hero/', category: 'other', files: [
         '20250829_175953.jpg', '20260113_222804.jpg', '20260320_002415.jpg',
         '20260320_155548.jpg', '20260320_155606.jpg', '20260331_003349.jpg', '20260501_221956.jpg'
       ]}
     ];
 
-    var allImages = [];
-    for (var s = 0; s < imageSources.length; s++) {
-      var src = imageSources[s];
+    var categorizedImages = { boards: [], chairs: [], other: [] };
+    var seenImages = { boards: {}, chairs: {}, other: {} };
+    function addImage(category, src) {
+      if (!src || !categorizedImages[category] || seenImages[category][src]) return;
+      seenImages[category][src] = true;
+      categorizedImages[category].push(src);
+    }
+
+    for (var s = 0; s < staticImageSources.length; s++) {
+      var src = staticImageSources[s];
       for (var f = 0; f < src.files.length; f++) {
-        allImages.push(src.dir + src.files[f]);
+        addImage(src.category, src.dir + src.files[f]);
       }
     }
 
-    if (!allImages.length) return;
-
-    // Size variants cycle
-    var sizes = ['tall', 'wide', 'square', 'wide', 'tall', 'square'];
-
-    // Build gallery items
-    var html = '';
-    for (var i = 0; i < allImages.length; i++) {
-      var sizeClass = 'gallery-scroll__item--' + sizes[i % sizes.length];
-      html += '<div class="gallery-scroll__item ' + sizeClass + '" data-gallery-idx="' + i + '">' +
-        '<img src="' + allImages[i] + '" alt="Gallery image ' + (i + 1) + '" loading="lazy">' +
-        '</div>';
+    // Anything dropped in images/gallery/ (root files count as boards; boards/chairs/other-projects
+    // subfolders let you categorize new uploads). Falls back to a generated manifest file.
+    function loadGalleryFolderImages() {
+      return fetch('images/gallery/')
+        .then(function (res) {
+          if (!res.ok) throw new Error('Directory listing unavailable');
+          return res.text();
+        })
+        .then(function (html) {
+          var files = parseDirectoryListingForImages(html);
+          return { boards: files, chairs: [], other: [] };
+        })
+        .catch(function () {
+          return fetch('images/gallery/gallery-manifest.json')
+            .then(function (res) {
+              if (!res.ok) throw new Error('Gallery manifest unavailable');
+              return res.json();
+            })
+            .then(function (data) {
+              if (Array.isArray(data)) return { boards: data, chairs: [], other: [] };
+              return {
+                boards: Array.isArray(data.boards) ? data.boards : [],
+                chairs: Array.isArray(data.chairs) ? data.chairs : [],
+                other: Array.isArray(data.other) ? data.other : []
+              };
+            })
+            .catch(function () { return { boards: [], chairs: [], other: [] }; });
+        });
     }
-    track.innerHTML = html;
 
-    // ---- Drag-to-scroll ----
-    var scrollSection = document.getElementById('gallery-scroll');
+    // First photo of every current + future product (Available Now boards + Adirondack chairs)
+    function loadFirstProductImages() {
+      var boardsPromise = loadInStockFromAvailableFolder().catch(function () { return []; });
+      var chairsPromise = fetch('Chairs.md')
+        .then(function (r) { return r.text(); })
+        .then(parseChairsMd)
+        .catch(function () { return []; });
+
+      return Promise.all([boardsPromise, chairsPromise]).then(function (results) {
+        var boards = results[0] || [];
+        var chairs = results[1] || [];
+        var boardImages = [];
+        var chairImages = [];
+        for (var i = 0; i < boards.length; i++) {
+          if (boards[i].images && boards[i].images[0]) boardImages.push(resolveProductImageSrc(boards[i].images[0]));
+        }
+        for (var c = 0; c < chairs.length; c++) {
+          if (chairs[c].images && chairs[c].images[0]) chairImages.push(resolveProductImageSrc(chairs[c].images[0]));
+        }
+        return { boards: boardImages, chairs: chairImages };
+      });
+    }
+
+    var currentCategory = 'boards';
+
+    Promise.all([loadGalleryFolderImages(), loadFirstProductImages()])
+      .then(function (results) {
+        var folderImages = results[0] || { boards: [], chairs: [], other: [] };
+        var productImages = results[1] || { boards: [], chairs: [] };
+
+        ['boards', 'chairs', 'other'].forEach(function (cat) {
+          (folderImages[cat] || []).forEach(function (name) { addImage(cat, 'images/gallery/' + name); });
+        });
+        (productImages.boards || []).forEach(function (src) { addImage('boards', src); });
+        (productImages.chairs || []).forEach(function (src) { addImage('chairs', src); });
+
+        setupDragScroll();
+        setupLightbox();
+        setupTabs();
+        renderCategory(currentCategory);
+      })
+      .catch(function () {
+        setupDragScroll();
+        setupLightbox();
+        setupTabs();
+        renderCategory(currentCategory);
+      });
+
+    // ---- Tabs ----
+    function setupTabs() {
+      var tabs = document.querySelectorAll('.catalog-tabs__tab[data-gallery-category]');
+      tabs.forEach(function (tab) {
+        tab.addEventListener('click', function () {
+          tabs.forEach(function (t) {
+            var isActive = t === tab;
+            t.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            t.tabIndex = isActive ? 0 : -1;
+          });
+          renderCategory(tab.getAttribute('data-gallery-category'));
+        });
+      });
+    }
+
+    // ---- Render current category's items ----
+    var allImages = [];
+    var items = [];
+
+    function renderCategory(category) {
+      currentCategory = category;
+      allImages = categorizedImages[category] || [];
+
+      if (!allImages.length) {
+        track.innerHTML = '';
+        if (emptyMsg) emptyMsg.hidden = false;
+        setTranslate(0);
+        return;
+      }
+      if (emptyMsg) emptyMsg.hidden = true;
+
+      // Size variants cycle
+      var sizes = ['tall', 'wide', 'square', 'wide', 'tall', 'square'];
+
+      // Build gallery items
+      var html = '';
+      for (var i = 0; i < allImages.length; i++) {
+        var sizeClass = 'gallery-scroll__item--' + sizes[i % sizes.length];
+        html += '<div class="gallery-scroll__item ' + sizeClass + '" data-gallery-idx="' + i + '">' +
+          '<img src="' + allImages[i] + '" alt="Gallery image ' + (i + 1) + '" loading="lazy">' +
+          '</div>';
+      }
+      track.innerHTML = html;
+      setTranslate(0);
+      recalcBounds();
+      bindItemEvents();
+    }
+
+    // ---- Drag-to-scroll (bound once) ----
     var isDragging = false;
     var startX = 0;
     var scrollLeft = 0;
     var currentTranslate = 0;
-    var trackWidth = track.scrollWidth;
-    var containerWidth = scrollSection.offsetWidth;
+    var trackWidth = 0;
+    var containerWidth = 0;
     var maxTranslate = 0;
-    var minTranslate = -(trackWidth - containerWidth);
+    var minTranslate = 0;
     var velocity = 0;
     var lastX = 0;
     var lastTime = 0;
@@ -3516,76 +3643,6 @@
       track.style.transform = 'translateX(' + currentTranslate + 'px)';
     }
 
-    // Mouse drag
-    scrollSection.addEventListener('mousedown', function (e) {
-      if (e.target.closest('.gallery-lightbox')) return;
-      isDragging = true;
-      startX = e.pageX;
-      scrollLeft = currentTranslate;
-      lastX = e.pageX;
-      lastTime = Date.now();
-      velocity = 0;
-      if (animationId) { cancelAnimationFrame(animationId); animationId = null; }
-      scrollSection.style.cursor = 'grabbing';
-      e.preventDefault();
-    });
-
-    document.addEventListener('mousemove', function (e) {
-      if (!isDragging) return;
-      var dx = e.pageX - startX;
-      setTranslate(scrollLeft + dx);
-
-      // Track velocity for momentum
-      var now = Date.now();
-      var dt = now - lastTime;
-      if (dt > 0) {
-        velocity = (e.pageX - lastX) / dt;
-      }
-      lastX = e.pageX;
-      lastTime = now;
-    });
-
-    document.addEventListener('mouseup', function () {
-      if (!isDragging) return;
-      isDragging = false;
-      scrollSection.style.cursor = '';
-      // Momentum scroll
-      startMomentum();
-    });
-
-    // Touch drag
-    scrollSection.addEventListener('touchstart', function (e) {
-      var touch = e.touches[0];
-      isDragging = true;
-      startX = touch.pageX;
-      scrollLeft = currentTranslate;
-      lastX = touch.pageX;
-      lastTime = Date.now();
-      velocity = 0;
-      if (animationId) { cancelAnimationFrame(animationId); animationId = null; }
-    }, { passive: true });
-
-    scrollSection.addEventListener('touchmove', function (e) {
-      if (!isDragging) return;
-      var touch = e.touches[0];
-      var dx = touch.pageX - startX;
-      setTranslate(scrollLeft + dx);
-
-      var now = Date.now();
-      var dt = now - lastTime;
-      if (dt > 0) {
-        velocity = (touch.pageX - lastX) / dt;
-      }
-      lastX = touch.pageX;
-      lastTime = now;
-    }, { passive: true });
-
-    scrollSection.addEventListener('touchend', function () {
-      if (!isDragging) return;
-      isDragging = false;
-      startMomentum();
-    });
-
     function startMomentum() {
       var friction = 0.95;
       var momentumVel = velocity * 15; // amplify
@@ -3599,48 +3656,122 @@
       animationId = requestAnimationFrame(animate);
     }
 
-    // Wheel scroll horizontal
-    scrollSection.addEventListener('wheel', function (e) {
-      e.preventDefault();
-      recalcBounds();
-      var delta = e.deltaY !== 0 ? e.deltaY : e.deltaX;
-      setTranslate(currentTranslate - delta * 1.5);
-    }, { passive: false });
-
-    // ---- 3D Tilt on hover ----
-    var items = track.querySelectorAll('.gallery-scroll__item');
-    items.forEach(function (item) {
-      item.addEventListener('mousemove', function (e) {
-        if (isDragging) return;
-        var rect = item.getBoundingClientRect();
-        var x = e.clientX - rect.left;
-        var y = e.clientY - rect.top;
-        var centerX = rect.width / 2;
-        var centerY = rect.height / 2;
-        var rotateY = ((x - centerX) / centerX) * 12;
-        var rotateX = ((centerY - y) / centerY) * 12;
-        item.style.transform = 'perspective(800px) rotateX(' + rotateX + 'deg) rotateY(' + rotateY + 'deg) scale(1.03)';
+    function setupDragScroll() {
+      // Mouse drag
+      scrollSection.addEventListener('mousedown', function (e) {
+        if (e.target.closest('.gallery-lightbox')) return;
+        isDragging = true;
+        startX = e.pageX;
+        scrollLeft = currentTranslate;
+        lastX = e.pageX;
+        lastTime = Date.now();
+        velocity = 0;
+        if (animationId) { cancelAnimationFrame(animationId); animationId = null; }
+        scrollSection.style.cursor = 'grabbing';
+        e.preventDefault();
       });
 
-      item.addEventListener('mouseleave', function () {
-        item.style.transform = '';
+      document.addEventListener('mousemove', function (e) {
+        if (!isDragging) return;
+        var dx = e.pageX - startX;
+        setTranslate(scrollLeft + dx);
+
+        // Track velocity for momentum
+        var now = Date.now();
+        var dt = now - lastTime;
+        if (dt > 0) {
+          velocity = (e.pageX - lastX) / dt;
+        }
+        lastX = e.pageX;
+        lastTime = now;
       });
 
-      // Click to open lightbox
-      item.addEventListener('click', function (e) {
-        // Only open if not dragging (allow small threshold)
-        if (Math.abs(e.pageX - startX) > 5) return;
-        var idx = parseInt(item.getAttribute('data-gallery-idx'), 10);
-        openLightbox(idx);
+      document.addEventListener('mouseup', function () {
+        if (!isDragging) return;
+        isDragging = false;
+        scrollSection.style.cursor = '';
+        // Momentum scroll
+        startMomentum();
       });
-    });
 
-    // ---- Lightbox ----
+      // Touch drag
+      scrollSection.addEventListener('touchstart', function (e) {
+        var touch = e.touches[0];
+        isDragging = true;
+        startX = touch.pageX;
+        scrollLeft = currentTranslate;
+        lastX = touch.pageX;
+        lastTime = Date.now();
+        velocity = 0;
+        if (animationId) { cancelAnimationFrame(animationId); animationId = null; }
+      }, { passive: true });
+
+      scrollSection.addEventListener('touchmove', function (e) {
+        if (!isDragging) return;
+        var touch = e.touches[0];
+        var dx = touch.pageX - startX;
+        setTranslate(scrollLeft + dx);
+
+        var now = Date.now();
+        var dt = now - lastTime;
+        if (dt > 0) {
+          velocity = (touch.pageX - lastX) / dt;
+        }
+        lastX = touch.pageX;
+        lastTime = now;
+      }, { passive: true });
+
+      scrollSection.addEventListener('touchend', function () {
+        if (!isDragging) return;
+        isDragging = false;
+        startMomentum();
+      });
+
+      // Wheel scroll horizontal
+      scrollSection.addEventListener('wheel', function (e) {
+        e.preventDefault();
+        recalcBounds();
+        var delta = e.deltaY !== 0 ? e.deltaY : e.deltaX;
+        setTranslate(currentTranslate - delta * 1.5);
+      }, { passive: false });
+
+      // Recalc on resize
+      window.addEventListener('resize', recalcBounds);
+    }
+
+    // ---- 3D Tilt on hover + click-to-open (re-bound after each render) ----
+    function bindItemEvents() {
+      items = track.querySelectorAll('.gallery-scroll__item');
+      items.forEach(function (item) {
+        item.addEventListener('mousemove', function (e) {
+          if (isDragging) return;
+          var rect = item.getBoundingClientRect();
+          var x = e.clientX - rect.left;
+          var y = e.clientY - rect.top;
+          var centerX = rect.width / 2;
+          var centerY = rect.height / 2;
+          var rotateY = ((x - centerX) / centerX) * 12;
+          var rotateX = ((centerY - y) / centerY) * 12;
+          item.style.transform = 'perspective(800px) rotateX(' + rotateX + 'deg) rotateY(' + rotateY + 'deg) scale(1.03)';
+        });
+
+        item.addEventListener('mouseleave', function () {
+          item.style.transform = '';
+        });
+
+        // Click to open lightbox
+        item.addEventListener('click', function (e) {
+          // Only open if not dragging (allow small threshold)
+          if (Math.abs(e.pageX - startX) > 5) return;
+          var idx = parseInt(item.getAttribute('data-gallery-idx'), 10);
+          openLightbox(idx);
+        });
+      });
+    }
+
+    // ---- Lightbox (bound once) ----
     var lightbox = document.getElementById('gallery-lightbox');
     var lightboxImg = document.getElementById('lightbox-img');
-    var lightboxClose = lightbox.querySelector('.gallery-lightbox__close');
-    var lightboxPrev = lightbox.querySelector('.gallery-lightbox__prev');
-    var lightboxNext = lightbox.querySelector('.gallery-lightbox__next');
     var lightboxIdx = 0;
 
     function openLightbox(idx) {
@@ -3650,7 +3781,7 @@
       lightbox.classList.add('gallery-lightbox--open');
       lightbox.setAttribute('aria-hidden', 'false');
       document.body.style.overflow = 'hidden';
-      lightboxClose.focus();
+      lightbox.querySelector('.gallery-lightbox__close').focus();
     }
 
     function closeLightbox() {
@@ -3659,39 +3790,41 @@
       document.body.style.overflow = '';
     }
 
-    lightboxClose.addEventListener('click', closeLightbox);
-    lightbox.addEventListener('click', function (e) {
-      if (e.target === lightbox) closeLightbox();
-    });
+    function setupLightbox() {
+      var lightboxClose = lightbox.querySelector('.gallery-lightbox__close');
+      var lightboxPrev = lightbox.querySelector('.gallery-lightbox__prev');
+      var lightboxNext = lightbox.querySelector('.gallery-lightbox__next');
 
-    lightboxPrev.addEventListener('click', function (e) {
-      e.stopPropagation();
-      lightboxIdx = (lightboxIdx - 1 + allImages.length) % allImages.length;
-      lightboxImg.src = allImages[lightboxIdx];
-    });
+      lightboxClose.addEventListener('click', closeLightbox);
+      lightbox.addEventListener('click', function (e) {
+        if (e.target === lightbox) closeLightbox();
+      });
 
-    lightboxNext.addEventListener('click', function (e) {
-      e.stopPropagation();
-      lightboxIdx = (lightboxIdx + 1) % allImages.length;
-      lightboxImg.src = allImages[lightboxIdx];
-    });
-
-    document.addEventListener('keydown', function (e) {
-      if (!lightbox.classList.contains('gallery-lightbox--open')) return;
-      if (e.key === 'Escape') closeLightbox();
-      if (e.key === 'ArrowLeft') {
+      lightboxPrev.addEventListener('click', function (e) {
+        e.stopPropagation();
         lightboxIdx = (lightboxIdx - 1 + allImages.length) % allImages.length;
         lightboxImg.src = allImages[lightboxIdx];
-      }
-      if (e.key === 'ArrowRight') {
+      });
+
+      lightboxNext.addEventListener('click', function (e) {
+        e.stopPropagation();
         lightboxIdx = (lightboxIdx + 1) % allImages.length;
         lightboxImg.src = allImages[lightboxIdx];
-      }
-    });
+      });
 
-    // Recalc on resize
-    window.addEventListener('resize', recalcBounds);
-    recalcBounds();
+      document.addEventListener('keydown', function (e) {
+        if (!lightbox.classList.contains('gallery-lightbox--open')) return;
+        if (e.key === 'Escape') closeLightbox();
+        if (e.key === 'ArrowLeft') {
+          lightboxIdx = (lightboxIdx - 1 + allImages.length) % allImages.length;
+          lightboxImg.src = allImages[lightboxIdx];
+        }
+        if (e.key === 'ArrowRight') {
+          lightboxIdx = (lightboxIdx + 1) % allImages.length;
+          lightboxImg.src = allImages[lightboxIdx];
+        }
+      });
+    }
   }
 
   // ---- Scroll Reveal (Intersection Observer) ----

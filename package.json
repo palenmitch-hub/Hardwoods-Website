@@ -2,6 +2,7 @@
   "name": "mitchs-hardwoods-website",
   "private": true,
   "scripts": {
-    "inventory:build": "node scripts/generate-inventory-manifest.mjs"
+    "inventory:build": "node scripts/generate-inventory-manifest.mjs",
+    "gallery:build": "node scripts/generate-gallery-manifest.mjs"
   }
 }
