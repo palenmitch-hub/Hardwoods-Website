@@ -1107,7 +1107,8 @@
     // Older inventory uploads used name-price-quantity-photo# and omitted a board id.
     // Recover the price from the name and group those photos as one board.
     var legacyPriceMatch = rawName.match(/^(.+)-(\d+(?:\.\d{1,2})?)$/);
-    var isLegacyPhotoName = !match[5] && /^\d{2}$/.test(productNum) && legacyPriceMatch;
+    var isCurrentPhotoName = /^\d{4,}$/.test(productNum);
+    var isLegacyPhotoName = !isCurrentPhotoName && !match[5] && /^\d{2}$/.test(productNum) && legacyPriceMatch;
     if (isLegacyPhotoName) {
       rawName = legacyPriceMatch[1].trim();
       priceNum = parseFloat(legacyPriceMatch[2]);
