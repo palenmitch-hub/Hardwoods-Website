@@ -3453,7 +3453,7 @@
     // Curated site photos that stay in the gallery regardless of inventory changes
     var staticImageSources = [
       { dir: 'images/products/design/', category: 'boards', files: [
-        'bas-1stripe1.jpg', 'bas-1stripe2.jpg', 'bas-1stripe3.jpg', 'bas-1stripe4.jpg',
+        'bas-1stripe4.jpg',
         'bas-multistripe1.jpg', 'bas-multistripe2.jpg',
         'bas-spor1.jpg', 'bas-spor2.jpg', 'bas-spor2eng.jpg', 'bas-spor3.jpg', 'bas-spor3eng.jpg',
         'bas-stripe3eng.jpg',
