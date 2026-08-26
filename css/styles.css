@@ -799,6 +799,51 @@ p {
   color: var(--color-primary);
 }
 
+/* Keep Available Now cards uniform in size on mobile */
+@media (max-width: 599px) {
+  #in-stock-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-sm);
+  }
+
+  #in-stock-grid .product-card__info {
+    padding: var(--space-sm);
+  }
+
+  #in-stock-grid .product-card__name {
+    font-size: 0.9rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: 2.3em;
+  }
+
+  #in-stock-grid .product-card__description {
+    display: none;
+  }
+
+  #in-stock-grid .product-card__meta,
+  #in-stock-grid .product-card__price,
+  #in-stock-grid .product-card__stock-info {
+    font-size: 0.75rem;
+  }
+
+  #in-stock-grid .product-card__actions {
+    flex-wrap: wrap;
+  }
+
+  #in-stock-grid .product-card__qty {
+    width: 48px;
+    min-height: 40px;
+  }
+
+  #in-stock-grid .product-card__instock-btn {
+    font-size: 0.8rem;
+    padding: var(--space-xs) var(--space-sm);
+  }
+}
+
 .category-section {
   margin-bottom: var(--space-3xl);
 }
@@ -1311,8 +1356,8 @@ p {
 
 .custom-pattern-grid {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--space-md);
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-sm);
 }
 
 .custom-pattern-card {
@@ -1342,35 +1387,36 @@ p {
 .custom-pattern-card img {
   display: block;
   width: 100%;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 1 / 1;
   object-fit: cover;
 }
 
 .custom-pattern-card span {
   display: grid;
-  gap: 4px;
-  padding: var(--space-md);
+  gap: 2px;
+  padding: var(--space-xs) var(--space-sm);
 }
 
 .custom-pattern-card strong {
   font-family: var(--font-heading);
-  font-size: 1.2rem;
+  font-size: 0.9rem;
 }
 
 .custom-pattern-card small {
   color: var(--color-text-muted);
-  font-size: var(--font-size-small);
+  font-size: 0.72rem;
 }
 
 @media (min-width: 600px) {
   .custom-pattern-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 
 @media (min-width: 1000px) {
   .custom-pattern-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(6, 1fr);
+    gap: var(--space-md);
   }
 }
 
