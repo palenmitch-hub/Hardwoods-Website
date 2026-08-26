@@ -7,12 +7,12 @@ $outputFile = Join-Path $galleryDir 'gallery-manifest.json'
 $supportedExtensions = @('.jpg', '.jpeg', '.png', '.webp')
 
 # Root-level files are legacy/uncategorized and are treated as "boards".
-# Drop new photos into boards/, chairs/, or other-projects/ to categorize them.
+# Drop new photos into boards/, chairs/, or other/ to categorize them.
 $subfolders = @(
   @{ Dir = ''; Category = 'boards' },
   @{ Dir = 'boards'; Category = 'boards' },
   @{ Dir = 'chairs'; Category = 'chairs' },
-  @{ Dir = 'other-projects'; Category = 'other' }
+  @{ Dir = 'other'; Category = 'other' }
 )
 
 function Get-GalleryImageNames {

@@ -165,6 +165,18 @@
             optionsHtml += '<span>Font: ' + (fontLabels[lines.font] || lines.font) + '</span>';
           }
         }
+        if (o.coasterEngravings) {
+          var ce = o.coasterEngravings;
+          var ceParts = [];
+          ['Coaster 1', 'Coaster 2', 'Coaster 3', 'Coaster 4'].forEach(function (k) {
+            if (ce[k]) ceParts.push(k + ': ' + ce[k]);
+          });
+          if (ceParts.length) optionsHtml += '<span>\u270E ' + escapeHtml(ceParts.join(' / ')) + '</span>';
+          if (o.font) {
+            var coasterFontLabels = { 'serif': 'Serif', 'sans-serif': 'Sans-Serif', 'script': 'Script', 'monospace': 'Monospace' };
+            optionsHtml += '<span>Font: ' + (coasterFontLabels[o.font] || o.font) + '</span>';
+          }
+        }
         optionsHtml += '</div>';
       }
       html +=
@@ -442,6 +454,15 @@
           if (el.middle) engParts.push(el.middle);
           if (el.bottom) engParts.push(el.bottom);
           if (engParts.length) parts.push('Engraving: ' + engParts.join(' | '));
+        }
+        if (item.options.coasterEngravings) {
+          var ce = item.options.coasterEngravings;
+          var ceParts = [];
+          ['Coaster 1', 'Coaster 2', 'Coaster 3', 'Coaster 4'].forEach(function (k) {
+            if (ce[k]) ceParts.push(k + ': ' + ce[k]);
+          });
+          if (ceParts.length) parts.push('Engraving: ' + ceParts.join(' | '));
+          if (item.options.font) parts.push('Font: ' + item.options.font);
         }
         if (parts.length) desc += ' [' + parts.join(', ') + ']';
       }
@@ -2100,9 +2121,15 @@
     var qtyInfo = (typeof product.qty === 'number' && !isNaN(product.qty))
       ? '<span class="product-card__stock-info">' + product.qty + ' available</span>'
       : '';
+    var isCoasterSet = product.name === 'Custom Coasters';
 
     var actionsHtml;
-    if (priceIsFixed) {
+    if (isCoasterSet) {
+      actionsHtml =
+        '<div class="product-card__actions">' +
+        '<button class="btn btn--outline product-card__coaster-options-btn" type="button" aria-label="See All Options for ' + safe(product.name) + '">See All Options</button>' +
+        '</div>';
+    } else if (priceIsFixed) {
       actionsHtml =
         '<div class="product-card__actions">' +
         '<label for="qty-' + safe(id) + '" class="sr-only">Quantity</label>' +
@@ -2146,6 +2173,114 @@
       .catch(function (err) {
         console.error('Failed to load otherProducts.md:', err);
       });
+  }
+
+  // ---- Custom Coasters Options Modal ----
+
+  function showCoasterOptionsModal(productName, basePrice, productId, callback) {
+    var old = document.getElementById('coaster-options-modal');
+    if (old) old.remove();
+
+    var modal = document.createElement('div');
+    modal.id = 'coaster-options-modal';
+    modal.className = 'board-options-modal';
+
+    var safe = escapeHtml;
+
+    modal.innerHTML =
+      '<div class="board-options-modal__backdrop"></div>' +
+      '<div class="board-options-modal__dialog" role="dialog" aria-labelledby="coaster-opt-title" aria-modal="true">' +
+        '<button type="button" class="board-options-modal__close" aria-label="Close">&times;</button>' +
+        '<h3 id="coaster-opt-title">' + safe(productName) + '</h3>' +
+        '<p class="board-options-modal__subtitle">Add custom engraving to any coaster (optional)</p>' +
+        '<span class="board-options-modal__price">' + formatPrice(basePrice) + '</span>' +
+        '<div class="board-opt-group">' +
+          '<label class="board-opt-group__label" for="coaster-text-1">Coaster 1</label>' +
+          '<input type="text" id="coaster-text-1" class="engraving-modal__input" maxlength="40" placeholder="e.g. The Johnson Family">' +
+        '</div>' +
+        '<div class="board-opt-group">' +
+          '<label class="board-opt-group__label" for="coaster-text-2">Coaster 2</label>' +
+          '<input type="text" id="coaster-text-2" class="engraving-modal__input" maxlength="40">' +
+        '</div>' +
+        '<div class="board-opt-group">' +
+          '<label class="board-opt-group__label" for="coaster-text-3">Coaster 3</label>' +
+          '<input type="text" id="coaster-text-3" class="engraving-modal__input" maxlength="40">' +
+        '</div>' +
+        '<div class="board-opt-group">' +
+          '<label class="board-opt-group__label" for="coaster-text-4">Coaster 4</label>' +
+          '<input type="text" id="coaster-text-4" class="engraving-modal__input" maxlength="40">' +
+        '</div>' +
+        '<div class="board-opt-group">' +
+          '<label class="board-opt-group__label" for="coaster-font">Font</label>' +
+          '<select id="coaster-font">' +
+            '<option value="serif">Serif (Classic)</option>' +
+            '<option value="sans-serif">Sans-Serif (Modern)</option>' +
+            '<option value="script">Script (Elegant)</option>' +
+            '<option value="monospace">Monospace (Clean)</option>' +
+          '</select>' +
+        '</div>' +
+        '<div class="board-options-modal__actions">' +
+          '<button type="button" class="btn btn--outline" id="coaster-opt-cancel">Cancel</button>' +
+          '<button type="button" class="btn btn--accent" id="coaster-opt-add">Add to Cart</button>' +
+        '</div>' +
+      '</div>';
+
+    document.body.appendChild(modal);
+    document.body.style.overflow = 'hidden';
+
+    var backdrop = modal.querySelector('.board-options-modal__backdrop');
+    var closeBtn = modal.querySelector('.board-options-modal__close');
+    var cancelBtn = document.getElementById('coaster-opt-cancel');
+    var addBtn = document.getElementById('coaster-opt-add');
+
+    function cleanup() {
+      modal.remove();
+      document.body.style.overflow = '';
+    }
+
+    backdrop.addEventListener('click', cleanup);
+    closeBtn.addEventListener('click', cleanup);
+    cancelBtn.addEventListener('click', cleanup);
+    modal.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') cleanup();
+    });
+
+    addBtn.addEventListener('click', function () {
+      var coasterEngravings = {
+        'Coaster 1': document.getElementById('coaster-text-1').value.trim(),
+        'Coaster 2': document.getElementById('coaster-text-2').value.trim(),
+        'Coaster 3': document.getElementById('coaster-text-3').value.trim(),
+        'Coaster 4': document.getElementById('coaster-text-4').value.trim()
+      };
+      var font = document.getElementById('coaster-font').value;
+      var hasEngraving = Object.keys(coasterEngravings).some(function (k) { return coasterEngravings[k]; });
+      var options = hasEngraving ? { coasterEngravings: coasterEngravings, font: font } : undefined;
+
+      cleanup();
+      callback(options, basePrice);
+    });
+
+    document.getElementById('coaster-text-1').focus();
+  }
+
+  function initCoasterOptions() {
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.product-card__coaster-options-btn');
+      if (!btn) return;
+      var card = btn.closest('.product-card');
+      if (!card) return;
+
+      var id = card.getAttribute('data-product-id');
+      var name = card.getAttribute('data-product-name');
+      var price = parseInt(card.getAttribute('data-product-price'), 10);
+      if (isNaN(price)) return;
+
+      showCoasterOptionsModal(name, price, id, function (options, finalPrice) {
+        addToCart(id, name, finalPrice, 1, undefined, options);
+        updateCartBadge();
+        showToast('1x ' + name + ' added to cart');
+      });
+    });
   }
 
   function initProductCarousels() {
@@ -2461,6 +2596,9 @@
 
     // Contact for Pricing quote request modal
     initQuoteRequestButtons();
+
+    // Custom Coasters engraving options modal
+    initCoasterOptions();
 
     // Quantity validation
     initQtyValidation();
@@ -3823,9 +3961,10 @@
         'low-rider-grey.jpg', 'low-rider-grey2.jpg',
         'rocker-2tone.jpg', 'rocker-2tone2.jpg', 'rocker-grey.jpg', 'rocker-grey2.jpg'
       ]},
-      { dir: 'images/hero/', category: 'other', files: [
-        '20250829_175953.jpg', '20260113_222804.jpg', '20260320_002415.jpg',
-        '20260320_155548.jpg', '20260320_155606.jpg', '20260331_003349.jpg', '20260501_221956.jpg'
+      { dir: 'images/products/other/', category: 'other', files: [
+        'Sign1.jpg',
+        'Catch1.jpg', 'Catch2.jpg', 'Catch3.jpg', 'Catch4.jpg',
+        'Coaster1.jpg', 'Coaster2.jpg'
       ]}
     ];
 

@@ -11,12 +11,12 @@ const outputFile = path.join(galleryDir, 'gallery-manifest.json');
 const SUPPORTED_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp']);
 
 // Root-level files are legacy/uncategorized and are treated as "boards".
-// Drop new photos into boards/, chairs/, or other-projects/ to categorize them.
+// Drop new photos into boards/, chairs/, or other/ to categorize them.
 const SUBFOLDERS = [
   { dir: '', category: 'boards' },
   { dir: 'boards', category: 'boards' },
   { dir: 'chairs', category: 'chairs' },
-  { dir: 'other-projects', category: 'other' }
+  { dir: 'other', category: 'other' }
 ];
 
 async function listImages(dirPath) {
