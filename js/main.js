@@ -1023,6 +1023,7 @@
     if (hasCarousel) {
       imagesHtml += '<button type="button" class="product-carousel__prev" aria-label="Previous photo">&lsaquo;</button>';
       imagesHtml += '<button type="button" class="product-carousel__next" aria-label="Next photo">&rsaquo;</button>';
+      imagesHtml += '<span class="product-carousel__count" aria-live="polite">1/' + imgs.length + '</span>';
     }
 
     var buttonLabel = isBasicBoard ? 'See All Options' : 'Add to Cart';
@@ -1094,24 +1095,36 @@
   function parseInStockFilename(fileName) {
     // Expected format: name-price-quantity-product#[-image#].ext
     // Example: Walnut with Wenge and Maple Stripe-100-1-0001-01.jpg
-    var match = fileName.match(/^(.+)-(\d+(?:\.\d{1,2})?)-(\d+)-([A-Za-z0-9]+)(?:-(\d+))?\.(jpe?g|png|webp)$/i);
-    if (!match) return null;
+    var extensionMatch = fileName.match(/\.(jpe?g|png|webp)$/i);
+    if (!extensionMatch) return null;
 
-    var rawName = match[1].trim();
-    var priceNum = parseFloat(match[2]);
-    var qtyNum = parseInt(match[3], 10);
-    var productNum = match[4];
-    var imageNum = match[5] ? parseInt(match[5], 10) : 1;
-    var ext = match[6].toLowerCase();
+    var stem = fileName.slice(0, extensionMatch.index);
+    var parts = stem.split('-');
+    var imageNum = 1;
+    var productNum = '';
+
+    // Parse from the right so a numeric price cannot be mistaken for quantity.
+    if (parts.length >= 5 && /^\d{4,}$/.test(parts[parts.length - 2]) && /^\d{1,3}$/.test(parts[parts.length - 3])) {
+      imageNum = parseInt(parts.pop(), 10);
+    }
+    if (parts.length < 4) return null;
+
+    productNum = parts.pop();
+    var qtyNum = parseInt(parts.pop(), 10);
+    var priceNum = parseFloat(parts.pop());
+    var rawName = parts.join('-').trim();
+    var ext = extensionMatch[1].toLowerCase();
 
     // Older inventory uploads used name-price-quantity-photo# and omitted a board id.
     // Recover the price from the name and group those photos as one board.
-    var legacyPriceMatch = rawName.match(/^(.+)-(\d+(?:\.\d{1,2})?)$/);
     var isCurrentPhotoName = /^\d{4,}$/.test(productNum);
-    var isLegacyPhotoName = !isCurrentPhotoName && !match[5] && /^\d{2}$/.test(productNum) && legacyPriceMatch;
+    var legacyPriceMatch = rawName.match(/^(.+)-(\d+(?:\.\d{1,2})?)$/);
+    var isLegacyPhotoName = !isCurrentPhotoName && /^\d{2}$/.test(productNum) && (!isNaN(priceNum) || legacyPriceMatch);
     if (isLegacyPhotoName) {
-      rawName = legacyPriceMatch[1].trim();
-      priceNum = parseFloat(legacyPriceMatch[2]);
+      if (legacyPriceMatch) {
+        rawName = legacyPriceMatch[1].trim();
+        priceNum = parseFloat(legacyPriceMatch[2]);
+      }
       imageNum = parseInt(productNum, 10);
       productNum = '';
     }
@@ -1233,6 +1246,7 @@
     if (hasCarousel) {
       imagesHtml += '<button type="button" class="product-carousel__prev" aria-label="Previous photo">&lsaquo;</button>';
       imagesHtml += '<button type="button" class="product-carousel__next" aria-label="Next photo">&rsaquo;</button>';
+      imagesHtml += '<span class="product-carousel__count" aria-live="polite">1/' + imgs.length + '</span>';
     }
 
     var qtyAvail = product.qty || 0;
