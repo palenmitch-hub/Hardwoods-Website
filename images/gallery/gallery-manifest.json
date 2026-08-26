@@ -1,17 +1,15 @@
 {
-    "boards":  [
-                   "Basic Cherry with Stripe.jpg",
-                   "Basic Walnut with Stipe.jpg",
-                   "Brick Pattern.jpg",
-                   "Checkered Pattern.jpg",
-                   "Intricate Large Weave.jpg",
-                   "Intricate Tight Weave.jpg",
-                   "Intricate Zigzag.jpg"
-               ],
-    "chairs":  [
-
-               ],
-    "other":  [
-                  "other/20250829_175953.jpg"
-              ]
+  "boards": [
+    "Basic Cherry with Stripe.jpg",
+    "Basic Walnut with Stipe.jpg",
+    "Brick Pattern.jpg",
+    "Checkered Pattern.jpg",
+    "Intricate Large Weave.jpg",
+    "Intricate Tight Weave.jpg",
+    "Intricate Zigzag.jpg"
+  ],
+  "chairs": [],
+  "other": [
+    "other/20250829_175953.jpg"
+  ]
 }
