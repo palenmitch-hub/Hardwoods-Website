@@ -1104,10 +1104,21 @@
     var imageNum = match[5] ? parseInt(match[5], 10) : 1;
     var ext = match[6].toLowerCase();
 
+    // Older inventory uploads used name-price-quantity-photo# and omitted a board id.
+    // Recover the price from the name and group those photos as one board.
+    var legacyPriceMatch = rawName.match(/^(.+)-(\d+(?:\.\d{1,2})?)$/);
+    var isLegacyPhotoName = !match[5] && /^\d{2}$/.test(productNum) && legacyPriceMatch;
+    if (isLegacyPhotoName) {
+      rawName = legacyPriceMatch[1].trim();
+      priceNum = parseFloat(legacyPriceMatch[2]);
+      imageNum = parseInt(productNum, 10);
+      productNum = '';
+    }
+
     if (isNaN(priceNum) || isNaN(qtyNum) || isNaN(imageNum) || imageNum < 1) return null;
 
     return {
-      id: 'instock-' + productNum.toLowerCase(),
+      id: productNum ? 'instock-' + productNum.toLowerCase() : 'instock-legacy-' + rawName.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + priceNum + '-' + qtyNum,
       productNumber: productNum,
       name: normalizeProductName(rawName),
       description: '',
