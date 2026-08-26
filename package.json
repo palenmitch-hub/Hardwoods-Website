@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "inventory:build": "node scripts/generate-inventory-manifest.mjs",
-    "gallery:build": "node scripts/generate-gallery-manifest.mjs"
+    "gallery:build": "node scripts/generate-gallery-manifest.mjs",
+    "hero:build": "node scripts/generate-hero-manifest.mjs"
   }
 }

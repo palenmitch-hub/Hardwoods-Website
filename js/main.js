@@ -686,6 +686,216 @@
     closeBtn.focus();
   }
 
+  // ---- Quote Request Modal (Other Products "Contact for Pricing") ----
+
+  function showQuoteRequestModal(productName) {
+    var old = document.getElementById('quote-request-modal');
+    if (old) old.remove();
+
+    var modal = document.createElement('div');
+    modal.id = 'quote-request-modal';
+    modal.className = 'order-form-modal';
+
+    var safe = escapeHtml;
+
+    modal.innerHTML =
+      '<div class="order-form-modal__backdrop"></div>' +
+      '<div class="order-form-modal__dialog" role="dialog" aria-labelledby="quote-form-title" aria-modal="true">' +
+        '<button type="button" class="order-form-modal__close" aria-label="Close">&times;</button>' +
+        '<h3 id="quote-form-title">Request Pricing — ' + safe(productName) + '</h3>' +
+        '<p class="order-form-modal__subtitle">Tell us what you have in mind and we\'ll get back to you with pricing.</p>' +
+        '<form id="quote-request-form" novalidate>' +
+          '<div class="order-form__row">' +
+            '<div class="order-form__field">' +
+              '<label for="quote-first-name">First Name <span class="required">*</span></label>' +
+              '<input type="text" id="quote-first-name" name="firstName" required autocomplete="given-name">' +
+              '<span class="order-form__error" id="quote-fname-error">First name is required</span>' +
+            '</div>' +
+            '<div class="order-form__field">' +
+              '<label for="quote-last-name">Last Name <span class="required">*</span></label>' +
+              '<input type="text" id="quote-last-name" name="lastName" required autocomplete="family-name">' +
+              '<span class="order-form__error" id="quote-lname-error">Last name is required</span>' +
+            '</div>' +
+          '</div>' +
+          '<div class="order-form__field">' +
+            '<label for="quote-email">Email Address <span class="required">*</span></label>' +
+            '<input type="email" id="quote-email" name="email" required autocomplete="email">' +
+            '<span class="order-form__error" id="quote-email-error">Valid email is required</span>' +
+          '</div>' +
+          '<div class="order-form__field">' +
+            '<label for="quote-phone">Phone Number <span class="required">*</span></label>' +
+            '<input type="tel" id="quote-phone" name="phone" required autocomplete="tel">' +
+            '<span class="order-form__error" id="quote-phone-error">Phone number is required</span>' +
+          '</div>' +
+          '<div class="order-form__field">' +
+            '<label for="quote-description">Describe what you would like and an approximate size needed <span class="required">*</span></label>' +
+            '<textarea id="quote-description" name="description" rows="4" required></textarea>' +
+            '<span class="order-form__error" id="quote-description-error">Please describe what you would like</span>' +
+          '</div>' +
+          '<fieldset class="order-form__fieldset">' +
+            '<legend>Preferred Contact Method <span class="required">*</span></legend>' +
+            '<div class="order-form__radio-group">' +
+              '<label class="order-form__radio"><input type="radio" name="quoteContactMethod" value="email" required> Email</label>' +
+              '<label class="order-form__radio"><input type="radio" name="quoteContactMethod" value="phone" required> Phone</label>' +
+            '</div>' +
+            '<span class="order-form__error" id="quote-contact-error">Please choose a preferred contact method</span>' +
+          '</fieldset>' +
+          '<div class="order-form__actions">' +
+            '<button type="button" class="btn btn--outline" id="quote-form-cancel">Cancel</button>' +
+            '<button type="submit" class="btn btn--accent" id="quote-form-submit">Send Request</button>' +
+          '</div>' +
+        '</form>' +
+      '</div>';
+
+    document.body.appendChild(modal);
+    document.body.style.overflow = 'hidden';
+
+    var backdrop = modal.querySelector('.order-form-modal__backdrop');
+    var closeBtn = modal.querySelector('.order-form-modal__close');
+    var cancelBtn = document.getElementById('quote-form-cancel');
+    var form = document.getElementById('quote-request-form');
+
+    function cleanup() {
+      modal.remove();
+      document.body.style.overflow = '';
+    }
+
+    backdrop.addEventListener('click', cleanup);
+    closeBtn.addEventListener('click', cleanup);
+    cancelBtn.addEventListener('click', cleanup);
+    modal.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') cleanup();
+    });
+
+    // Clear error on input
+    form.querySelectorAll('input, textarea').forEach(function (inp) {
+      inp.addEventListener('input', function () {
+        inp.classList.remove('order-form__input--error');
+        var errEl = inp.closest('.order-form__field');
+        if (errEl) {
+          var errSpan = errEl.querySelector('.order-form__error');
+          if (errSpan) errSpan.classList.remove('order-form__error--visible');
+        }
+      });
+    });
+    form.querySelectorAll('input[name="quoteContactMethod"]').forEach(function (radio) {
+      radio.addEventListener('change', function () {
+        document.getElementById('quote-contact-error').classList.remove('order-form__error--visible');
+      });
+    });
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+
+      var valid = true;
+      var firstName = document.getElementById('quote-first-name');
+      var lastName = document.getElementById('quote-last-name');
+      var email = document.getElementById('quote-email');
+      var phone = document.getElementById('quote-phone');
+      var description = document.getElementById('quote-description');
+      var contactMethodInput = form.querySelector('input[name="quoteContactMethod"]:checked');
+
+      if (!firstName.value.trim()) {
+        firstName.classList.add('order-form__input--error');
+        document.getElementById('quote-fname-error').classList.add('order-form__error--visible');
+        valid = false;
+      }
+      if (!lastName.value.trim()) {
+        lastName.classList.add('order-form__input--error');
+        document.getElementById('quote-lname-error').classList.add('order-form__error--visible');
+        valid = false;
+      }
+      if (!email.value.trim() || !isValidEmail(email.value)) {
+        email.classList.add('order-form__input--error');
+        document.getElementById('quote-email-error').classList.add('order-form__error--visible');
+        valid = false;
+      }
+      if (!phone.value.trim()) {
+        phone.classList.add('order-form__input--error');
+        document.getElementById('quote-phone-error').classList.add('order-form__error--visible');
+        valid = false;
+      }
+      if (!description.value.trim()) {
+        description.classList.add('order-form__input--error');
+        document.getElementById('quote-description-error').classList.add('order-form__error--visible');
+        valid = false;
+      }
+      if (!contactMethodInput) {
+        document.getElementById('quote-contact-error').classList.add('order-form__error--visible');
+        valid = false;
+      }
+      if (!valid) return;
+
+      var now = new Date();
+      var dateStr = now.toLocaleDateString('en-US', {
+        year: 'numeric', month: 'long', day: 'numeric',
+        hour: 'numeric', minute: '2-digit'
+      });
+
+      var quoteData = {
+        action: 'submitQuoteRequest',
+        product: productName,
+        firstName: firstName.value.trim(),
+        lastName: lastName.value.trim(),
+        email: email.value.trim(),
+        phone: phone.value.trim(),
+        contactMethod: contactMethodInput.value,
+        description: description.value.trim(),
+        date: dateStr
+      };
+
+      var submitBtn = document.getElementById('quote-form-submit');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Sending...';
+      }
+
+      // Send quote request to Google Apps Script via hidden form + iframe
+      // (fetch no-cors loses POST body on Google's 302 redirect)
+      var iframeName = 'quote-submit-' + Date.now();
+      var hiddenIframe = document.createElement('iframe');
+      hiddenIframe.name = iframeName;
+      hiddenIframe.style.display = 'none';
+      document.body.appendChild(hiddenIframe);
+
+      var hiddenForm = document.createElement('form');
+      hiddenForm.method = 'POST';
+      hiddenForm.action = APPS_SCRIPT_URL;
+      hiddenForm.target = iframeName;
+      hiddenForm.style.display = 'none';
+
+      var hiddenInput = document.createElement('input');
+      hiddenInput.type = 'hidden';
+      hiddenInput.name = 'payload';
+      hiddenInput.value = JSON.stringify(quoteData);
+      hiddenForm.appendChild(hiddenInput);
+
+      document.body.appendChild(hiddenForm);
+      hiddenForm.submit();
+
+      setTimeout(function () {
+        hiddenForm.remove();
+        hiddenIframe.remove();
+      }, 10000);
+
+      cleanup();
+      showToast('Your request has been sent — we\'ll be in touch soon!');
+    });
+
+    document.getElementById('quote-first-name').focus();
+  }
+
+  function initQuoteRequestButtons() {
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.product-card__quote-btn');
+      if (!btn) return;
+      e.preventDefault();
+      var card = btn.closest('.product-card');
+      var productName = card ? card.getAttribute('data-product-name') : '';
+      showQuoteRequestModal(productName || 'your project');
+    });
+  }
+
   // ---- Custom Order Form Validation (T031) ----
 
   function validateCustomOrderForm(form) {
@@ -1830,6 +2040,114 @@
       });
   }
 
+  // ---- Other Products (otherProducts.md) ----
+
+  function parseOtherProductsMd(text) {
+    var products = [];
+    var current = null;
+    var lines = text.split('\n');
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].replace(/\r$/, '');
+      var nameMatch = line.match(/^Name:\s*(.*)$/);
+      if (nameMatch) {
+        var nameVal = nameMatch[1].trim();
+        current = nameVal ? { name: nameVal, description: '', price: '', qty: null, images: [] } : null;
+        if (current) products.push(current);
+        continue;
+      }
+      if (!current) continue;
+      var descMatch = line.match(/^Description:\s*(.*)$/);
+      if (descMatch) { current.description = descMatch[1].trim(); continue; }
+      var priceMatch = line.match(/^Price:\s*(.*)$/);
+      if (priceMatch) { current.price = priceMatch[1].trim(); continue; }
+      var qtyMatch = line.match(/^Quantity:\s*(.*)$/);
+      if (qtyMatch) {
+        var qtyVal = qtyMatch[1].trim();
+        current.qty = qtyVal ? parseInt(qtyVal, 10) : null;
+        continue;
+      }
+      var imgMatch = line.match(/^Images:\s*(.*)$/);
+      if (imgMatch) {
+        var imgVal = imgMatch[1].trim();
+        current.images = imgVal ? imgVal.split(',').map(function (s) { return s.trim(); }).filter(Boolean) : [];
+        continue;
+      }
+    }
+    return products;
+  }
+
+  function buildOtherProductCardHTML(product, id) {
+    var safe = escapeHtml;
+    var imgs = product.images;
+    var hasCarousel = imgs.length > 1;
+    var imageClass = 'product-card__image' + (hasCarousel ? ' product-carousel' : '');
+
+    var imagesHtml = '';
+    for (var i = 0; i < imgs.length; i++) {
+      var activeClass = i === 0 ? ' product-carousel__slide--active' : '';
+      var cssClass = hasCarousel ? 'product-carousel__slide' + activeClass : '';
+      imagesHtml += '<img class="' + cssClass + '" data-image-index="' + i + '" src="' + safe(resolveProductImageSrc(imgs[i])) +
+        '" alt="' + safe(product.name) + ' - view ' + (i + 1) + '" loading="lazy">';
+    }
+    if (hasCarousel) {
+      imagesHtml += '<button type="button" class="product-carousel__prev" aria-label="Previous photo">&lsaquo;</button>';
+      imagesHtml += '<button type="button" class="product-carousel__next" aria-label="Next photo">&rsaquo;</button>';
+      imagesHtml += '<span class="product-carousel__count" aria-live="polite">1/' + imgs.length + '</span>';
+    }
+    var imageBlock = imgs.length ? ('<div class="' + imageClass + '">' + imagesHtml + '</div>') : '';
+
+    var priceIsFixed = /^\$[\d,]+(\.\d{1,2})?$/.test(product.price || '');
+    var qtyInfo = (typeof product.qty === 'number' && !isNaN(product.qty))
+      ? '<span class="product-card__stock-info">' + product.qty + ' available</span>'
+      : '';
+
+    var actionsHtml;
+    if (priceIsFixed) {
+      actionsHtml =
+        '<div class="product-card__actions">' +
+        '<label for="qty-' + safe(id) + '" class="sr-only">Quantity</label>' +
+        '<input type="number" id="qty-' + safe(id) + '" class="product-card__qty" value="1" min="1" step="1" aria-label="Quantity for ' + safe(product.name) + '">' +
+        '<button class="btn btn--accent product-card__add" type="button" aria-label="Add to Cart for ' + safe(product.name) + '">Add to Cart</button>' +
+        '</div>';
+    } else {
+      actionsHtml =
+        '<div class="product-card__actions">' +
+        '<button class="btn btn--outline product-card__quote-btn" type="button">Contact for Pricing</button>' +
+        '</div>';
+    }
+
+    return '<article class="product-card" data-product-id="' + safe(id) +
+      '" data-product-name="' + safe(product.name) +
+      '" data-product-price="' + (priceIsFixed ? priceToCents(product.price) : 0) + '">' +
+      imageBlock +
+      '<div class="product-card__info">' +
+      '<h3 class="product-card__name">' + safe(product.name) + '</h3>' +
+      '<p class="product-card__description">' + safe(product.description) + '</p>' +
+      '<span class="product-card__price">' + safe(product.price) + '</span>' +
+      qtyInfo +
+      actionsHtml +
+      '</div></article>';
+  }
+
+  function loadOtherProductsFromMd() {
+    var grid = document.getElementById('other-products-grid');
+    if (!grid) return;
+    fetch('otherProducts.md')
+      .then(function (res) { return res.text(); })
+      .then(function (text) {
+        var products = parseOtherProductsMd(text);
+        var html = '';
+        for (var i = 0; i < products.length; i++) {
+          var id = 'other-' + products[i].name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + (i + 1);
+          html += buildOtherProductCardHTML(products[i], id);
+        }
+        grid.innerHTML = html;
+      })
+      .catch(function (err) {
+        console.error('Failed to load otherProducts.md:', err);
+      });
+  }
+
   function initProductCarousels() {
     document.addEventListener('click', function (e) {
       var btn = e.target.closest('.product-carousel__prev, .product-carousel__next');
@@ -1956,14 +2274,46 @@
   // ---- Hero Slideshow ----
 
   function initHeroSlideshow() {
-    var slides = document.querySelectorAll('.hero__slide');
-    if (slides.length < 2) return;
-    var current = 0;
-    setInterval(function () {
-      slides[current].classList.remove('hero__slide--active');
-      current = (current + 1) % slides.length;
-      slides[current].classList.add('hero__slide--active');
-    }, 5000);
+    var container = document.getElementById('hero-slides');
+    if (!container) return;
+
+    function startRotation(slides) {
+      if (slides.length < 2) return;
+      var current = 0;
+      setInterval(function () {
+        slides[current].classList.remove('hero__slide--active');
+        current = (current + 1) % slides.length;
+        slides[current].classList.add('hero__slide--active');
+      }, 5000);
+    }
+
+    // Always show every photo currently in images/hero (directory listing first, manifest as fallback)
+    fetch('images/hero/')
+      .then(function (res) {
+        if (!res.ok) throw new Error('Directory listing unavailable');
+        return res.text();
+      })
+      .then(parseDirectoryListingForImages)
+      .catch(function () {
+        return fetch('images/hero/hero-manifest.json')
+          .then(function (res) {
+            if (!res.ok) throw new Error('Hero manifest unavailable');
+            return res.json();
+          })
+          .catch(function () { return []; });
+      })
+      .then(function (files) {
+        files = Array.isArray(files) ? files : [];
+        if (!files.length) return;
+
+        var html = '';
+        for (var i = 0; i < files.length; i++) {
+          var activeClass = i === 0 ? ' hero__slide--active' : '';
+          html += '<img class="hero__slide' + activeClass + '" src="images/hero/' + files[i] + '" alt="">';
+        }
+        container.innerHTML = html;
+        startRotation(container.querySelectorAll('.hero__slide'));
+      });
   }
 
   function initCatalogTabs() {
@@ -2109,6 +2459,9 @@
     // Add to cart delegation
     initAddToCart();
 
+    // Contact for Pricing quote request modal
+    initQuoteRequestButtons();
+
     // Quantity validation
     initQtyValidation();
 
@@ -2138,6 +2491,9 @@
 
     // Load chairs from Chairs.md
     loadChairsFromMd();
+
+    // Load other products from otherProducts.md
+    loadOtherProductsFromMd();
 
     // Load featured products (homepage)
     loadFeaturedProducts();

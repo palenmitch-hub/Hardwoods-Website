@@ -25,6 +25,9 @@ function doPost(e) {
     if (data.action === 'submitOrder') {
       return handleSubmitOrder(data);
     }
+    if (data.action === 'submitQuoteRequest') {
+      return handleSubmitQuoteRequest(data);
+    }
     if (data.action === 'processInventoryInbox') {
       return handleProcessInventoryInbox(data);
     }
@@ -181,6 +184,47 @@ function handleSubmitOrder(data) {
   });
 
   return ContentService.createTextOutput(JSON.stringify({ success: true, orderId: orderId }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+// ---- Quote Request (Other Products "Contact for Pricing") ----
+
+function handleSubmitQuoteRequest(data) {
+  var body = 'New Quote Request Received!\n\n' +
+    'Product: ' + data.product + '\n' +
+    'Date: ' + data.date + '\n\n' +
+    'Customer Info:\n' +
+    '  Name: ' + data.firstName + ' ' + data.lastName + '\n' +
+    '  Email: ' + data.email + '\n' +
+    '  Phone: ' + data.phone + '\n' +
+    '  Preferred Contact: ' + data.contactMethod + '\n\n' +
+    'Description / Size Needed:\n' + data.description;
+
+  var htmlBody = '<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f9f9f9; padding: 32px; border-radius: 12px;">' +
+    '<h2 style="color: #333; margin-top: 0;">New Quote Request</h2>' +
+    '<p style="color: #666;"><strong>Product:</strong> ' + data.product + '</p>' +
+    '<p style="color: #666;"><strong>Date:</strong> ' + data.date + '</p>' +
+    '<hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">' +
+    '<h3 style="color: #333;">Customer Info</h3>' +
+    '<table style="width: 100%; border-collapse: collapse;">' +
+    '<tr><td style="padding: 6px 0; color: #888;">Name</td><td style="padding: 6px 0;">' + data.firstName + ' ' + data.lastName + '</td></tr>' +
+    '<tr><td style="padding: 6px 0; color: #888;">Email</td><td style="padding: 6px 0;"><a href="mailto:' + data.email + '">' + data.email + '</a></td></tr>' +
+    '<tr><td style="padding: 6px 0; color: #888;">Phone</td><td style="padding: 6px 0;"><a href="tel:' + data.phone + '">' + data.phone + '</a></td></tr>' +
+    '<tr><td style="padding: 6px 0; color: #888;">Preferred Contact</td><td style="padding: 6px 0;">' + data.contactMethod + '</td></tr>' +
+    '</table>' +
+    '<hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">' +
+    '<h3 style="color: #333;">Description / Size Needed</h3>' +
+    '<p style="color: #444; white-space: pre-wrap;">' + data.description + '</p>' +
+    '</div>';
+
+  MailApp.sendEmail({
+    to: OWNER_EMAIL,
+    subject: 'Quote Request — ' + data.product + ' — ' + data.firstName + ' ' + data.lastName,
+    body: body,
+    htmlBody: htmlBody
+  });
+
+  return ContentService.createTextOutput(JSON.stringify({ success: true }))
     .setMimeType(ContentService.MimeType.JSON);
 }
 

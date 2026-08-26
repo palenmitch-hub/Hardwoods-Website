@@ -50,6 +50,7 @@
           <button type="button" class="catalog-tabs__tab" id="tab-available" role="tab" aria-selected="true" aria-controls="panel-available" data-tab-target="panel-available">Available Now</button>
           <button type="button" class="catalog-tabs__tab" id="tab-design" role="tab" aria-selected="false" aria-controls="panel-design" tabindex="-1" data-tab-target="panel-design">Design Your Own</button>
           <button type="button" class="catalog-tabs__tab" id="tab-chairs" role="tab" aria-selected="false" aria-controls="panel-chairs" tabindex="-1" data-tab-target="panel-chairs">Adirondack Chairs</button>
+          <button type="button" class="catalog-tabs__tab" id="tab-other" role="tab" aria-selected="false" aria-controls="panel-other" tabindex="-1" data-tab-target="panel-other">Other Products</button>
         </div>
       </div>
 
@@ -272,6 +273,15 @@
         <p class="catalog-section__subtitle">All Adirondack chairs are built to order. Expect 4-8 week lead times for chair orders.</p>
         <div class="product-grid" id="chairs-grid">
           <!-- Populated dynamically from Chairs.md -->
+        </div>
+      </section>
+
+      <!-- ==================== OTHER PRODUCTS ==================== -->
+      <section class="catalog-section catalog-tabpanel" id="panel-other" role="tabpanel" aria-labelledby="tab-other" tabindex="0" hidden>
+        <h2>Other Products</h2>
+        <p class="catalog-section__subtitle">Board butter, custom signs, trays, coasters, and more handmade goods.</p>
+        <div class="product-grid" id="other-products-grid">
+          <!-- Populated dynamically from otherProducts.md -->
         </div>
       </section>
 
