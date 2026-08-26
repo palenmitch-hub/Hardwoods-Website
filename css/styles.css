@@ -1236,6 +1236,117 @@ p {
 }
 
 /* --- Custom Order Form --- */
+.custom-builder > .category-section {
+  display: none;
+}
+
+.custom-builder__intro {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-lg);
+  padding: var(--space-2xl) var(--space-lg);
+  margin-top: var(--space-lg);
+  background: linear-gradient(135deg, rgba(201, 169, 110, 0.14), rgba(255, 255, 255, 0.03));
+  border: 1px solid rgba(201, 169, 110, 0.28);
+  text-align: center;
+}
+
+.custom-builder__intro p,
+.custom-builder__patterns-header p {
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.custom-builder__start {
+  min-width: 190px;
+}
+
+.custom-builder__patterns {
+  margin-top: var(--space-xl);
+}
+
+.custom-builder__patterns[hidden],
+.custom-builder__intro[hidden] {
+  display: none;
+}
+
+.custom-builder__patterns-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.custom-builder__patterns-header h3 {
+  margin-bottom: var(--space-xs);
+}
+
+.custom-pattern-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-md);
+}
+
+.custom-pattern-card {
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-lg);
+  background: var(--color-bg-card);
+  color: var(--color-white);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.custom-pattern-card:hover,
+.custom-pattern-card:focus-visible {
+  border-color: var(--color-accent);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+}
+
+.custom-pattern-card:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+
+.custom-pattern-card img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+.custom-pattern-card span {
+  display: grid;
+  gap: 4px;
+  padding: var(--space-md);
+}
+
+.custom-pattern-card strong {
+  font-family: var(--font-heading);
+  font-size: 1.2rem;
+}
+
+.custom-pattern-card small {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-small);
+}
+
+@media (min-width: 600px) {
+  .custom-pattern-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1000px) {
+  .custom-pattern-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
 .custom-order-section {
   background-color: var(--color-bg-card);
   border: 1px solid var(--color-border);

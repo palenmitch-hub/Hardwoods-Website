@@ -53,9 +53,44 @@
       </section>
 
       <!-- ==================== DESIGN YOUR OWN BOARD ==================== -->
-      <section class="catalog-section">
+      <section class="catalog-section custom-builder" id="design-your-own">
         <h2>Design Your Own Board</h2>
         <p class="catalog-section__subtitle">Pick a style you like below and click the See All Options button to fully customize that style of board! Expect 1-3 week lead times for all custom ordered boards.</p>
+
+        <div class="custom-builder__intro">
+          <p>Start with a pattern, then choose the woods and details available for that design.</p>
+          <button class="btn btn--accent custom-builder__start" type="button">Let's Get Started</button>
+        </div>
+
+        <div class="custom-builder__patterns" id="custom-patterns" hidden>
+          <div class="custom-builder__patterns-header">
+            <div>
+              <h3>Choose Your Pattern</h3>
+              <p>Each pattern has its own set of wood and finish options.</p>
+            </div>
+            <button class="btn btn--outline custom-builder__back" type="button">Back</button>
+          </div>
+          <div class="custom-pattern-grid">
+            <button class="custom-pattern-card" type="button" data-custom-pattern="1stripe" data-product-id="custom-1stripe" data-product-name="1 Stripe End Grain Board" data-product-price="10000">
+              <img src="images/gallery/Basic Walnut with Stipe.jpg" alt="1 Stripe board pattern" loading="lazy" width="400" height="260"><span><strong>1 Stripe</strong><small>Clean and classic</small></span>
+            </button>
+            <button class="custom-pattern-card" type="button" data-custom-pattern="multistripe" data-product-id="custom-multistripe" data-product-name="Multi Stripe End Grain Board" data-product-price="12500">
+              <img src="images/products/bas-multistripe1.jpg" alt="Multi stripe board pattern" loading="lazy" width="400" height="260"><span><strong>Multi Stripe</strong><small>Layered color and contrast</small></span>
+            </button>
+            <button class="custom-pattern-card" type="button" data-custom-pattern="sporadic" data-product-id="custom-sporadic" data-product-name="Sporatic Blocks End Grain Board" data-product-price="10000">
+              <img src="images/products/bas-spor1.jpg" alt="Sporadic blocks board pattern" loading="lazy" width="400" height="260"><span><strong>Sporadic</strong><small>Playful blocks and movement</small></span>
+            </button>
+            <button class="custom-pattern-card" type="button" data-custom-pattern="tight" data-product-id="custom-tight" data-product-name="Tight Weave End Grain Board" data-product-price="22500" data-pattern-board="color">
+              <img src="images/gallery/Intricate Tight Weave.jpg" alt="Tight weave board pattern" loading="lazy" width="400" height="260"><span><strong>Tight Weave</strong><small>Detailed and intricate</small></span>
+            </button>
+            <button class="custom-pattern-card" type="button" data-custom-pattern="large" data-product-id="custom-large" data-product-name="Large Weave End Grain Board" data-product-price="25000" data-pattern-board="color">
+              <img src="images/gallery/Intricate Large Weave.jpg" alt="Large weave board pattern" loading="lazy" width="400" height="260"><span><strong>Large Weave</strong><small>Bold optical depth</small></span>
+            </button>
+            <button class="custom-pattern-card" type="button" data-custom-pattern="zigzag" data-product-id="custom-zigzag" data-product-name="3D Zig Zag End Grain Board" data-product-price="30000" data-pattern-board="no-color">
+              <img src="images/gallery/Intricate Zigzag.jpg" alt="3D zig zag board pattern" loading="lazy" width="400" height="260"><span><strong>3D Zig Zag</strong><small>Dimensional and dramatic</small></span>
+            </button>
+          </div>
+        </div>
 
         <!-- ---- Basic Boards (T018) ---- -->
         <section class="category-section">

@@ -2063,6 +2063,9 @@
     // Pattern board options handler
     initPatternBoardOptions();
 
+    // Design Your Own Board flow
+    initCustomBuilder();
+
     // In-stock board options handler
     initInStockOptions();
 
@@ -3279,6 +3282,59 @@
         updateCartBadge();
         showToast(qty + 'x ' + name + ' added to cart');
       });
+    });
+  }
+
+  // ---- Design Your Own Board Flow ----
+
+  function initCustomBuilder() {
+    var builder = document.querySelector('.custom-builder');
+    if (!builder) return;
+
+    var startBtn = builder.querySelector('.custom-builder__start');
+    var backBtn = builder.querySelector('.custom-builder__back');
+    var intro = builder.querySelector('.custom-builder__intro');
+    var patterns = builder.querySelector('.custom-builder__patterns');
+
+    function showPatterns() {
+      intro.hidden = true;
+      patterns.hidden = false;
+      var firstPattern = patterns.querySelector('.custom-pattern-card');
+      if (firstPattern) firstPattern.focus();
+    }
+
+    function showIntro() {
+      patterns.hidden = true;
+      intro.hidden = false;
+      startBtn.focus();
+    }
+
+    startBtn.addEventListener('click', showPatterns);
+    backBtn.addEventListener('click', showIntro);
+
+    patterns.addEventListener('click', function (e) {
+      var card = e.target.closest('.custom-pattern-card');
+      if (!card) return;
+
+      var id = card.getAttribute('data-product-id');
+      var name = card.getAttribute('data-product-name');
+      var price = parseInt(card.getAttribute('data-product-price'), 10);
+      var patternBoard = card.getAttribute('data-pattern-board');
+      if (!name || isNaN(price)) return;
+
+      if (patternBoard) {
+        showPatternBoardOptionsModal(name, price, 1, id, patternBoard === 'color', function (options, finalPrice) {
+          addToCart(id, name, finalPrice, 1, undefined, options);
+          updateCartBadge();
+          showToast('1x ' + name + ' added to cart');
+        });
+      } else {
+        showBoardOptionsModal(name, price, 1, id, function (options, finalPrice) {
+          addToCart(id, name, finalPrice, 1, undefined, options);
+          updateCartBadge();
+          showToast('1x ' + name + ' added to cart');
+        });
+      }
     });
   }
 
