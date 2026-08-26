@@ -297,7 +297,8 @@ function processInventoryInbox() {
   var labelProcessed = GmailApp.getUserLabelByName(INVENTORY_LABEL_PROCESSED);
   var labelError = GmailApp.getUserLabelByName(INVENTORY_LABEL_ERROR);
 
-  var query = 'label:"' + INVENTORY_LABEL_NEW + '"';
+  var query = '(label:"' + INVENTORY_LABEL_NEW + '" OR to:' + INVENTORY_EMAIL + ')' +
+    ' -label:"' + INVENTORY_LABEL_PROCESSED + '" -label:"' + INVENTORY_LABEL_ERROR + '"';
   var threads = GmailApp.search(query, 0, 20);
   var processedCount = 0;
   var errorCount = 0;

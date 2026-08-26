@@ -7,8 +7,10 @@ This adds a "send an email and update Available" workflow using Google Apps Scri
 Recommended inbox:
 - inventory@mitchs-hardwoods.com
 
-In Gmail, create this label and apply it to incoming inventory messages:
+In Gmail, create this label for inventory messages:
 - MitchHardwoods/Inventory/New
+
+The script also finds new messages addressed to `inventory@mitchs-hardwoods.com`, so manually applying the label is optional. The label is still useful for manually retrying or organizing messages.
 
 The script will move processed items to:
 - MitchHardwoods/Inventory/Processed
