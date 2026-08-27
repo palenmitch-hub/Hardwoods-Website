@@ -1,5 +1,5 @@
 1. Name/Style: Rocker
-Description: the comfort of an adirondack and the peacful sway of a rocking chair combined to make the ultimate sitting experience. 
+Description: The comfort of an adirondack and the peacful sway of a rocking chair combined to make the ultimate sitting experience. 
 Price: 800
 Images: chairs/rocker-2tone, chairs/rocker-2tone2, chairs/rocker-grey, chairs/rocker-grey2
 2. Name/Style: Low Rider

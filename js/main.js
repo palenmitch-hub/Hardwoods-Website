@@ -1472,7 +1472,7 @@
               id: parsed.id,
               productNumber: parsed.productNumber,
               name: parsed.name,
-              description: parsed.description,
+              description: productMetadata.description || parsed.description,
               price: parsed.price,
               qty: parsed.qty,
               type: productMetadata.type || 'cutting-board',
@@ -1538,8 +1538,8 @@
       '<div class="product-card__info">' +
       '<h3 class="product-card__name">' + safe(product.name) + '</h3>' +
       (product.productNumber ? '<span class="product-card__meta">Product #: ' + safe(product.productNumber) + '</span>' : '') +
-      (product.description ? '<p class="product-card__description">' + safe(product.description) + '</p>' : '') +
       '<span class="product-card__price">' + safe(product.price) + '</span>' +
+      (product.description ? '<details class="product-card__description-details"><summary>View description</summary><p class="product-card__description">' + safe(product.description) + '</p></details>' : '') +
       '<span class="product-card__stock-info">' + qtyAvail + ' available</span>' +
       '<div class="product-card__actions">' +
       '<label for="qty-' + safe(id) + '" class="sr-only">Quantity</label>' +
@@ -1868,6 +1868,7 @@
       var card = e.target.closest('#in-stock-grid .product-card');
       if (!card) return;
       if (e.target.closest('.product-card__image')) return;
+      if (e.target.closest('.product-card__description-details')) return;
       var btn = e.target.closest('.product-card__instock-btn');
       if (!btn && !e.target.closest('.product-card__info')) return;
       var id = card.getAttribute('data-product-id');

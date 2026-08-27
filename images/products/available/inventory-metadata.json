@@ -1,6 +1,7 @@
 {
   "0003": {
     "type": "cutting-board",
+    "description": "Rich walnut showcases bold grain and depth, framed by vibrant cherry and red padauk checkered stripes. A striking handcrafted board with a warm, graphic pattern and generous prep space.",
     "preAdded": {
       "juiceGroove": true,
       "handles": false,
@@ -9,6 +10,7 @@
   },
   "0007": {
     "type": "cutting-board",
+    "description": "A bold end-grain cutting board pairing rich red padauk with warm limba for vibrant contrast. The chamfered edges add a crisp, tailored finish to this substantial everyday board.",
     "preAdded": {
       "juiceGroove": true,
       "handles": false,
@@ -17,6 +19,7 @@
   },
   "0009": {
     "type": "cutting-board",
+    "description": "Rich red padauk and light limba create a striking two-tone end-grain pattern, finished with softly rounded edges. A durable, eye-catching board with a comfortable, refined profile.",
     "preAdded": {
       "juiceGroove": true,
       "handles": false,
@@ -25,6 +28,7 @@
   },
   "0010": {
     "type": "cutting-board",
+    "description": "Crafted entirely from walnut, this end-grain board features a lively sporadic block pattern that highlights the wood's natural variation. Its deep tone and detailed grain make it both practical and distinctive.",
     "preAdded": {
       "juiceGroove": true,
       "handles": false,
@@ -33,6 +37,7 @@
   },
   "0011": {
     "type": "cutting-board",
+    "description": "A dramatic walnut and padauk end-grain board with sweeping red accents that create a cosmic, flowing pattern. The richly figured surface gives this functional piece the presence of a display-worthy centerpiece.",
     "preAdded": {
       "juiceGroove": true,
       "handles": false,
@@ -41,6 +46,7 @@
   },
   "0012": {
     "type": "other",
+    "description": "A compact walnut catch-all tray with a softly rounded rectangular shape and raised rim. Its warm grain and low-profile design make it ideal for organizing keys, jewelry, or other everyday essentials.",
     "preAdded": {
       "juiceGroove": false,
       "handles": false,
