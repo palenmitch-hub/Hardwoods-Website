@@ -10,6 +10,27 @@
   var CART_KEY = 'mitchs-cart';
   var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxecanGI5MkQWiMAk8nftuzyy76tzPu9QuA6quQ-qkJHj2zb6HRfvHfouatM07Njl7Lyg/exec';
 
+  var FONT_SELECT_MAP = {
+    'serif': 'Georgia, "Times New Roman", serif',
+    'sans-serif': '"Inter", Arial, sans-serif',
+    'script': '"Brush Script MT", "Segoe Script", cursive',
+    'monospace': '"Courier New", Courier, monospace'
+  };
+
+  function initFontSelectPreviews(root) {
+    var selects = root.querySelectorAll('select[id$="-font"]');
+    selects.forEach(function (select) {
+      for (var i = 0; i < select.options.length; i++) {
+        var option = select.options[i];
+        option.style.fontFamily = FONT_SELECT_MAP[option.value] || '';
+      }
+      select.style.fontFamily = FONT_SELECT_MAP[select.value] || '';
+      select.addEventListener('change', function () {
+        this.style.fontFamily = FONT_SELECT_MAP[this.value] || '';
+      });
+    });
+  }
+
   // ---- Cart Module (T011) ----
 
   function getCart() {
@@ -1646,6 +1667,7 @@
 
     modal.innerHTML = dialogHtml;
     document.body.appendChild(modal);
+    initFontSelectPreviews(modal);
     document.body.style.overflow = 'hidden';
 
     var backdrop = modal.querySelector('.board-options-modal__backdrop');
@@ -1868,6 +1890,7 @@
 
     modal.innerHTML = dialogHtml;
     document.body.appendChild(modal);
+    initFontSelectPreviews(modal);
     document.body.style.overflow = 'hidden';
 
     var backdrop = modal.querySelector('.board-options-modal__backdrop');
@@ -2234,6 +2257,7 @@
       '</div>';
 
     document.body.appendChild(modal);
+    initFontSelectPreviews(modal);
     document.body.style.overflow = 'hidden';
 
     var backdrop = modal.querySelector('.board-options-modal__backdrop');
@@ -2869,6 +2893,7 @@
 
     modal.innerHTML = dialogHtml;
     document.body.appendChild(modal);
+    initFontSelectPreviews(modal);
     document.body.style.overflow = 'hidden';
 
     var backdrop = modal.querySelector('.board-options-modal__backdrop');
@@ -3273,6 +3298,7 @@
 
     modal.innerHTML = dialogHtml;
     document.body.appendChild(modal);
+    initFontSelectPreviews(modal);
     document.body.style.overflow = 'hidden';
 
     var dialog = modal.querySelector('.board-options-modal__dialog');
