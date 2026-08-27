@@ -38,5 +38,13 @@
       "handles": false,
       "feet": false
     }
+  },
+  "0012": {
+    "type": "other",
+    "preAdded": {
+      "juiceGroove": false,
+      "handles": false,
+      "feet": false
+    }
   }
 }
