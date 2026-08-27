@@ -1,1 +1,10 @@
-{}
+{
+  "0003": {
+    "type": "cutting-board",
+    "preAdded": {
+      "juiceGroove": true,
+      "handles": false,
+      "feet": false
+    }
+  }
+}
