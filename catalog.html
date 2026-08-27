@@ -11,7 +11,7 @@
   <link rel="icon" type="image/svg+xml" href="images/logo-icon.svg">
   <link rel="stylesheet" href="css/styles.css">
 </head>
-<body>
+<body class="catalog-page">
   <a href="#main-content" class="skip-link">Skip to content</a>
 
   <header class="site-header">
@@ -44,15 +44,17 @@
         <p>Handcrafted with care in Woodstock, GA</p>
       </div>
 
-      <!-- ==================== CATALOG TABS ==================== -->
-      <div class="catalog-tabs">
-        <div class="catalog-tabs__list" role="tablist" aria-label="Catalog categories">
-          <button type="button" class="catalog-tabs__tab" id="tab-available" role="tab" aria-selected="true" aria-controls="panel-available" data-tab-target="panel-available">Available Now</button>
-          <button type="button" class="catalog-tabs__tab" id="tab-design" role="tab" aria-selected="false" aria-controls="panel-design" tabindex="-1" data-tab-target="panel-design">Design Your Own</button>
-          <button type="button" class="catalog-tabs__tab" id="tab-chairs" role="tab" aria-selected="false" aria-controls="panel-chairs" tabindex="-1" data-tab-target="panel-chairs">Adirondack Chairs</button>
-          <button type="button" class="catalog-tabs__tab" id="tab-other" role="tab" aria-selected="false" aria-controls="panel-other" tabindex="-1" data-tab-target="panel-other">Other Products</button>
-        </div>
-      </div>
+      <div class="catalog-layout">
+        <aside class="catalog-sidebar" aria-label="Catalog navigation">
+          <div class="catalog-tabs">
+            <div class="catalog-tabs__list" role="tablist" aria-label="Catalog categories">
+              <button type="button" class="catalog-tabs__tab" id="tab-available" role="tab" aria-selected="true" aria-controls="panel-available" data-tab-target="panel-available">Available Now</button>
+              <button type="button" class="catalog-tabs__tab" id="tab-design" role="tab" aria-selected="false" aria-controls="panel-design" tabindex="-1" data-tab-target="panel-design">Design Your Own</button>
+              <button type="button" class="catalog-tabs__tab" id="tab-chairs" role="tab" aria-selected="false" aria-controls="panel-chairs" tabindex="-1" data-tab-target="panel-chairs">Adirondack Chairs</button>
+              <button type="button" class="catalog-tabs__tab" id="tab-other" role="tab" aria-selected="false" aria-controls="panel-other" tabindex="-1" data-tab-target="panel-other">Other Products</button>
+            </div>
+          </div>
+        </aside>
 
       <!-- ==================== AVAILABLE NOW ==================== -->
       <section class="catalog-section catalog-tabpanel" id="panel-available" role="tabpanel" aria-labelledby="tab-available" tabindex="0">
@@ -298,6 +300,7 @@
       </section>
 
 
+      </div>
     </div>
   </main>
 
