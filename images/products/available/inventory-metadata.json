@@ -6,5 +6,13 @@
       "handles": false,
       "feet": false
     }
+  },
+  "0007": {
+    "type": "cutting-board",
+    "preAdded": {
+      "juiceGroove": true,
+      "handles": false,
+      "feet": false
+    }
   }
 }
