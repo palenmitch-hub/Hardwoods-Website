@@ -1295,7 +1295,22 @@ function getGitHubFileIfExists_(cfg, path) {
   if (code < 200 || code >= 300) {
     throw new Error('GitHub read failed (' + code + '): ' + resp.getContentText());
   }
-  return JSON.parse(resp.getContentText());
+  var file = JSON.parse(resp.getContentText());
+  if (file && file.type === 'file' && !file.content && file.download_url) {
+    var rawResp = UrlFetchApp.fetch(file.download_url, {
+      method: 'get',
+      muteHttpExceptions: true,
+      headers: {
+        Authorization: 'Bearer ' + cfg.token,
+        Accept: 'application/vnd.github.raw+json'
+      }
+    });
+    var rawCode = rawResp.getResponseCode();
+    if (rawCode >= 200 && rawCode < 300) {
+      file.content = Utilities.base64Encode(rawResp.getContent());
+    }
+  }
+  return file;
 }
 
 function listGitHubDirectory_(cfg, path) {
