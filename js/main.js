@@ -1436,23 +1436,20 @@
   }
 
   function loadInStockFromAvailableFolder() {
-    // Try directory listing first (works on some local/static servers),
-    // then fallback to a manifest file for hosts that block listings.
-    return fetch('images/products/available/')
+    // Use the manifest as the shared source of truth for the manager and public catalog.
+    return fetch('images/products/available/inventory-manifest.json')
       .then(function (res) {
-        if (!res.ok) throw new Error('Directory listing unavailable');
+        if (!res.ok) throw new Error('Manifest unavailable');
         return res.text();
       })
-      .then(function (html) {
-        return parseDirectoryListingForImages(html);
-      })
+      .then(parseInStockManifest)
       .catch(function () {
-        return fetch('images/products/available/inventory-manifest.json')
+        return fetch('images/products/available/')
           .then(function (res) {
-            if (!res.ok) throw new Error('Manifest unavailable');
+            if (!res.ok) throw new Error('Directory listing unavailable');
             return res.text();
           })
-          .then(parseInStockManifest);
+          .then(parseDirectoryListingForImages);
       })
       .then(function (fileNames) {
         return fetch('images/products/available/inventory-metadata.json')
