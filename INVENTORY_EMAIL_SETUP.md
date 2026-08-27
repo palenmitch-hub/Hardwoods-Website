@@ -26,6 +26,13 @@ Example:
 
 Attach one or more images (JPG, PNG, or WEBP).
 
+Optional add-email metadata may be included in the body:
+```
+Type: cutting-board
+Pre-added: Juice Groove, Handles
+```
+Use `Type: other` for products that are not cutting boards, or `Type: charcuterie` for charcuterie boards. Cutting boards show all four options, other products show Custom Engraving only, and charcuterie boards show Feet only. The only valid pre-added options are Juice Groove, Handles, and Feet. Omit `Pre-added` when none are already installed.
+
 When multiple images are attached, they are saved for the same board as:
 - name-price-qty-product#-01.jpg
 - name-price-qty-product#-02.jpg
@@ -47,11 +54,16 @@ Example:
 To update an existing board's Name, Price, and/or Quantity, use subject format:
 - UPDATE | ProductNumber
 
-Put the new details in the email body, one per line:
+Put the new details in the email body in this format:
 ```
-Name: Walnut with Wenge and Maple Stripe
-Price: 120
-Quantity: 1
+Walnut and Padauk | 125 | 2
+```
+
+Optional metadata lines may follow the first line:
+```
+Walnut and Padauk | 125 | 2
+Type: cutting-board
+Pre-added: Juice Groove, Handles
 ```
 
 - If you attach new image(s) to an UPDATE email, they replace all existing photos for that product number.
@@ -60,10 +72,7 @@ Quantity: 1
 
 Example:
 - Subject: UPDATE | 0003
-- Body:
-  - Name: Walnut with Wenge and Maple Stripe
-  - Price: 120
-  - Quantity: 1
+- Body: Walnut and Padauk | 125 | 2
 
 If you leave ProductNumber blank on add emails, the script auto-assigns the next available number.
 
@@ -127,9 +136,10 @@ For each valid email in `MitchHardwoods/Inventory/New`:
      - One image: `name-price-qty-product#.ext`
      - Multiple images: `name-price-qty-product#-01.ext`, `...-02.ext`, etc.
    - If GitHub is configured, images are uploaded to `images/products/available/` and `inventory-manifest.json` is updated.
-3. If action is Update (`UPDATE | ProductNumber` + Name/Price/Quantity in the body):
+3. If action is Update (`UPDATE | ProductNumber` + `Name | Price | Quantity` in the body):
    - If image(s) are attached, they replace all existing photos for that product number.
    - If no images are attached, existing photos are kept and renamed to match the new Name/Price/Qty.
+   - `Type: other` shows Custom Engraving only. `Type: charcuterie` shows Feet only. `Pre-added: Juice Groove, Handles` marks installed options as unavailable for purchase.
    - Old manifest entries for that product number are removed and replaced with the new filenames.
 4. If action is Remove:
    - All inventory image files matching `product#` are deleted from `images/products/available/`

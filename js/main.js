@@ -173,7 +173,7 @@
         if (o.stripeWood) optionsHtml += '<span>Stripe: ' + escapeHtml(o.stripeWood) + '</span>';
         if (o.accentWood) optionsHtml += '<span>Accent: ' + escapeHtml(o.accentWood) + '</span>';
         if (o.handles) optionsHtml += '<span>Handles: Yes (+$10)</span>';
-        if (o.feet && o.feet !== 'none') optionsHtml += '<span>Feet: ' + escapeHtml(o.feet) + (o.feet === 'Basic' ? ' (+$5)' : ' (+$20)') + '</span>';
+        if (o.feet && o.feet !== 'none') optionsHtml += '<span>Feet: ' + escapeHtml(o.feet) + (o.feet === 'Included' ? '' : (o.feet === 'Basic' ? ' (+$5)' : ' (+$20)')) + '</span>';
         if (o.epoxyColor) optionsHtml += '<span>Epoxy Color: ' + escapeHtml(o.epoxyColor) + '</span>';
         if (o.size) optionsHtml += '<span>Size: ' + escapeHtml(o.size) + '</span>';
         if (o.charcuterieHandles) optionsHtml += '<span>Handles: Yes</span>';
@@ -1426,6 +1426,15 @@
     }
   }
 
+  function parseInStockMetadata(text) {
+    try {
+      var parsed = JSON.parse(text);
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (e) {
+      return {};
+    }
+  }
+
   function loadInStockFromAvailableFolder() {
     // Try directory listing first (works on some local/static servers),
     // then fallback to a manifest file for hosts that block listings.
@@ -1446,6 +1455,14 @@
           .then(parseInStockManifest);
       })
       .then(function (fileNames) {
+        return fetch('images/products/available/inventory-metadata.json')
+          .then(function (res) { return res.ok ? res.text() : '{}'; })
+          .then(function (text) { return { fileNames: fileNames, metadata: parseInStockMetadata(text) }; })
+          .catch(function () { return { fileNames: fileNames, metadata: {} }; });
+      })
+      .then(function (inventory) {
+        var fileNames = inventory.fileNames;
+        var metadata = inventory.metadata;
         var groupedBoards = {};
         for (var i = 0; i < fileNames.length; i++) {
           var parsed = parseInStockFilename(fileNames[i]);
@@ -1453,6 +1470,7 @@
 
           var boardId = parsed.id;
           if (!groupedBoards[boardId]) {
+            var productMetadata = metadata[String(parsed.productNumber || '').toLowerCase()] || {};
             groupedBoards[boardId] = {
               id: parsed.id,
               productNumber: parsed.productNumber,
@@ -1460,6 +1478,8 @@
               description: parsed.description,
               price: parsed.price,
               qty: parsed.qty,
+              type: productMetadata.type || 'cutting-board',
+              preAdded: productMetadata.preAdded || {},
               _sortKey: parsed._sortKey,
               _imageEntries: []
             };
@@ -1515,6 +1535,7 @@
     return '<article class="product-card" data-product-id="' + safe(id) +
       '" data-product-name="' + safe(product.name) +
       '" data-product-price="' + priceToCents(product.price) +
+      '" data-product-type="' + safe(product.type || 'cutting-board') +
       '" data-in-stock="true" data-qty-available="' + qtyAvail + '">' +
       '<div class="' + imageClass + '">' + imagesHtml + '</div>' +
       '<div class="product-card__info">' +
@@ -1538,7 +1559,7 @@
         var html = '';
         for (var i = 0; i < boards.length; i++) {
           var id = boards[i].id || ('instock-' + (i + 1));
-          instockInventory[id] = { qty: boards[i].qty || 0 };
+          instockInventory[id] = { qty: boards[i].qty || 0, type: boards[i].type || 'cutting-board', preAdded: boards[i].preAdded || {} };
           html += buildInStockCardHTML(boards[i], id);
         }
         grid.innerHTML = html;
@@ -1550,13 +1571,14 @@
 
   // ---- In-Stock Board Options Modal (Feet + Engraving only) ----
 
-  function showInStockOptionsModal(productName, basePrice, qty, productId, callback) {
+  function showInStockOptionsModal(productName, basePrice, qty, productId, metadata, callback) {
     var old = document.getElementById('instock-options-modal');
     if (old) old.remove();
 
     var BASIC_FEET_PRICE = 500;
     var BRASS_FEET_PRICE = 2000;
     var ENGRAVING_PRICE_OPT = 2000;
+    var preAdded = metadata && metadata.preAdded ? metadata.preAdded : {};
 
     var FEET_INFO = 'Basic feet are just small black ruberized feet and the Brass Feet are actual metal (brass) feet with a rubber O ring inlayed that adds another level of beauty and function.';
     var ENGRAVING_INFO = 'Choose your font, type out your message, and choose where on the board you would like it! Feel free to use multiple levels and alignments to make it your own!';
@@ -1574,12 +1596,12 @@
         '<span class="board-options-modal__price" id="instock-opt-price">' + formatPrice(basePrice) + '</span>' +
 
         // Feet
-        '<div class="board-opt-group">' +
+        '<div class="board-opt-group' + (preAdded.feet ? ' board-opt-group--included' : '') + '" data-instock-option="feet">' +
           '<span class="board-opt-group__label">Feet ' + buildInfoBubble(FEET_INFO) + '</span>' +
           '<div class="board-opt-radios">' +
             '<div class="board-opt-radio">' +
               '<input type="radio" id="instock-feet-none" name="instockFeet" value="none" checked>' +
-              '<label for="instock-feet-none">No Feet</label>' +
+              '<label for="instock-feet-none">' + (preAdded.feet ? 'Already included' : 'No Feet') + '</label>' +
             '</div>' +
             '<div class="board-opt-radio">' +
               '<input type="radio" id="instock-feet-basic" name="instockFeet" value="basic">' +
@@ -1593,7 +1615,7 @@
         '</div>' +
 
         // Engraving
-        '<div class="board-engraving-section">' +
+        '<div class="board-engraving-section" data-instock-option="engraving">' +
           '<div class="board-opt-group">' +
             '<span class="board-opt-group__label">Custom Engraving ' + buildInfoBubble(ENGRAVING_INFO) + '</span>' +
             '<div class="board-opt-radios">' +
@@ -1675,6 +1697,26 @@
     var cancelBtn = document.getElementById('instock-opt-cancel');
     var addBtn = document.getElementById('instock-opt-add');
     var livePrice = document.getElementById('instock-opt-price');
+    var productType = metadata && metadata.type ? metadata.type : 'cutting-board';
+
+    if (preAdded.feet) {
+      modal.querySelectorAll('input[name="instockFeet"]').forEach(function (radio) { radio.disabled = true; });
+    }
+    function addSimpleOption(name, price, inputName, yesId, noId, label) {
+      var group = document.createElement('div');
+      group.className = 'board-opt-group' + (preAdded[name] ? ' board-opt-group--included' : '');
+      group.setAttribute('data-instock-option', name);
+      group.innerHTML = '<span class="board-opt-group__label">' + label + '</span><div class="board-opt-radios"><div class="board-opt-radio"><input type="radio" id="' + noId + '" name="' + inputName + '" value="no"' + (preAdded[name] ? ' disabled' : ' checked') + '><label for="' + noId + '">No</label></div><div class="board-opt-radio"><input type="radio" id="' + yesId + '" name="' + inputName + '" value="yes"' + (preAdded[name] ? ' checked disabled' : '') + '><label for="' + yesId + '">' + (preAdded[name] ? 'Already included' : 'Yes<span class="opt-price">+$' + price / 100 + '</span>') + '</label></div></div>';
+      modal.querySelector('.board-opt-group').before(group);
+    }
+    if (productType === 'cutting-board') {
+      addSimpleOption('juiceGroove', 1000, 'instockJuiceGroove', 'instock-juice-yes', 'instock-juice-no', 'Juice Groove');
+      addSimpleOption('handles', 1000, 'instockHandles', 'instock-handles-yes', 'instock-handles-no', 'Handles');
+    } else if (productType === 'charcuterie') {
+      modal.querySelector('[data-instock-option="engraving"]').style.display = 'none';
+    } else if (productType === 'other') {
+      modal.querySelector('[data-instock-option="feet"]').style.display = 'none';
+    }
 
     // Engraving toggle
     var engFields = document.getElementById('instock-eng-fields');
@@ -1745,6 +1787,10 @@
       }
       var eng = modal.querySelector('input[name="instockEng"]:checked');
       if (eng && eng.value === 'yes') total += ENGRAVING_PRICE_OPT;
+      var juiceGroove = modal.querySelector('input[name="instockJuiceGroove"]:checked');
+      if (juiceGroove && juiceGroove.value === 'yes' && !preAdded.juiceGroove) total += 1000;
+      var handles = modal.querySelector('input[name="instockHandles"]:checked');
+      if (handles && handles.value === 'yes' && !preAdded.handles) total += 1000;
       return total;
     }
 
@@ -1771,8 +1817,12 @@
     addBtn.addEventListener('click', function () {
       var feetVal = modal.querySelector('input[name="instockFeet"]:checked').value;
       var engVal = modal.querySelector('input[name="instockEng"]:checked').value;
+      var juiceGrooveInput = modal.querySelector('input[name="instockJuiceGroove"]:checked');
+      var handlesInput = modal.querySelector('input[name="instockHandles"]:checked');
       var options = {
-        feet: feetVal === 'none' ? null : (feetVal === 'basic' ? 'Basic' : 'Brass'),
+        feet: preAdded.feet ? 'Included' : (feetVal === 'none' ? null : (feetVal === 'basic' ? 'Basic' : 'Brass')),
+        juiceGroove: !!juiceGrooveInput && juiceGrooveInput.value === 'yes',
+        handles: !!handlesInput && handlesInput.value === 'yes',
         engravingLines: null
       };
 
@@ -1818,10 +1868,11 @@
 
   function initInStockOptions() {
     document.addEventListener('click', function (e) {
-      var btn = e.target.closest('.product-card__instock-btn');
-      if (!btn) return;
-      var card = btn.closest('.product-card');
+      var card = e.target.closest('#in-stock-grid .product-card');
       if (!card) return;
+      if (e.target.closest('.product-card__image')) return;
+      var btn = e.target.closest('.product-card__instock-btn');
+      if (!btn && !e.target.closest('.product-card__info')) return;
       var id = card.getAttribute('data-product-id');
       var name = card.getAttribute('data-product-name');
       var price = parseInt(card.getAttribute('data-product-price'), 10);
@@ -1846,7 +1897,15 @@
         }
       }
 
-      showInStockOptionsModal(name, price, qty, id, function (options, finalPrice) {
+      if (!inv || ['cutting-board', 'charcuterie', 'other'].indexOf(inv.type) === -1) {
+        addToCart(id, name, price, qty);
+        updateCartBadge();
+        updateInStockDisplay(id);
+        showToast(qty + 'x ' + name + ' added to cart');
+        return;
+      }
+
+      showInStockOptionsModal(name, price, qty, id, inv, function (options, finalPrice) {
         addToCart(id, name, finalPrice, qty, undefined, options);
         updateCartBadge();
         // Update displayed stock on the card

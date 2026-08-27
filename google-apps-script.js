@@ -365,6 +365,7 @@ function processInventoryInbox() {
       if (parsed) {
         var productAssignment = resolveInventoryProductNumber_(parsed, github);
         parsed.productNum = productAssignment.productNum;
+        var inventoryMetadata = parseInventoryMetadata_(message.getPlainBody ? message.getPlainBody() : '');
 
         var imageBlobs = getImageAttachments(message);
         if (!imageBlobs || imageBlobs.length === 0) {
@@ -384,6 +385,7 @@ function processInventoryInbox() {
             pushInventoryImageToGitHub_(github, fileNames[gi], imageBlobs[gi]);
           }
           updateInventoryManifestOnGitHub_(github, fileNames);
+          updateInventoryMetadataOnGitHub_(github, parsed.productNum, inventoryMetadata);
           pushed = true;
         }
 
@@ -410,7 +412,7 @@ function processInventoryInbox() {
       } else if (isUpdateSubject) {
         var updateInfo = parseInventoryUpdateCommand(message);
         if (!updateInfo) {
-          throw new Error('Invalid UPDATE subject. Use format: UPDATE | ProductNumber');
+          throw new Error('Invalid UPDATE subject. Use format: UPDATE | ProductNumber with body: Name | Price | Quantity. Optional lines: Type: cutting-board|charcuterie|other and Pre-added: Juice Groove, Handles, Feet.');
         }
         if (!github.enabled) {
           throw new Error('GitHub is not configured. Product update requires GITHUB_TOKEN, GITHUB_OWNER, and GITHUB_REPO script properties.');
@@ -418,6 +420,7 @@ function processInventoryInbox() {
 
         var imageBlobsForUpdate = getImageAttachments(message);
         var updateResult = updateInventoryOnGitHub_(github, updateInfo, imageBlobsForUpdate);
+        updateInventoryMetadataOnGitHub_(github, updateInfo.productNum, updateInfo.metadata);
 
         actionSummary =
           'Inventory email processed successfully.\n\n' +
@@ -496,16 +499,14 @@ function processInventoryInbox() {
         'Error: ' + err.message + '\n\n' +
         'Expected formats:\n' +
         '1) Add board: Name | Price | Qty | ProductNumber (ProductNumber optional)\n' +
-        '2) Update board: UPDATE | ProductNumber (with Name, Price, Quantity in the body)\n' +
+        '2) Update board: UPDATE | ProductNumber (body: Name | Price | Quantity; optional Type and Pre-added lines)\n' +
         '3) Remove board: REMOVE | ProductNumber\n' +
         '4) Sold board: SOLD | ProductNumber\n\n' +
         'Examples:\n' +
         'Walnut with Wenge and Maple Stripe | 100 | 1 | 0003\n' +
         'Walnut with Wenge and Maple Stripe | 100 | 1 |\n' +
         'UPDATE | 0003\n' +
-        '  Name: Walnut with Wenge and Maple Stripe\n' +
-        '  Price: 120\n' +
-        '  Quantity: 1\n' +
+        '  Walnut and Padauk | 125 | 2\n' +
         'REMOVE | 0003\n' +
         'SOLD | 0003\n\n' +
         'Attach one or more images. Multiple images will be saved as -01, -02, etc. Attaching new images on an UPDATE email replaces the existing ones; leaving images off keeps the existing photos.\n\n' +
@@ -594,16 +595,15 @@ function parseInventoryUpdateCommand(message) {
   if (!subjectMatch) return null;
 
   var body = String(message.getPlainBody ? message.getPlainBody() : '');
-  var nameMatch = body.match(/^\s*name\s*[:|-]\s*(.+?)\s*$/im);
-  var priceMatch = body.match(/^\s*price\s*[:|-]\s*\$?\s*(\d+(?:\.\d{1,2})?)/im);
-  var qtyMatch = body.match(/^\s*(?:qty|quantity)\s*[:|-]\s*(\d+)/im);
+  var bodyLine = body.split(/\r?\n/).filter(function (line) { return line.trim(); })[0] || '';
+  var parts = bodyLine.split('|').map(function (part) { return part.trim(); });
 
-  if (!nameMatch || !priceMatch || !qtyMatch) {
-    throw new Error('UPDATE email body must include Name, Price, and Quantity lines (e.g. "Name: Walnut Board", "Price: 150", "Quantity: 2").');
+  if (parts.length !== 3 || !parts[0] || !/^\$?\d+(?:\.\d{1,2})?$/.test(parts[1]) || !/^\d+$/.test(parts[2])) {
+    throw new Error('UPDATE email body must use the format "Name | Price | Quantity" (e.g. "Walnut and Padauk | 125 | 2").');
   }
 
-  var priceNum = parseFloat(priceMatch[1]);
-  var qtyNum = parseInt(qtyMatch[1], 10);
+  var priceNum = parseFloat(parts[1].replace('$', ''));
+  var qtyNum = parseInt(parts[2], 10);
   if (isNaN(priceNum) || priceNum <= 0) {
     throw new Error('UPDATE email Price must be a positive number.');
   }
@@ -613,9 +613,27 @@ function parseInventoryUpdateCommand(message) {
 
   return {
     productNum: subjectMatch[1],
-    name: nameMatch[1].trim(),
+    name: parts[0],
     price: priceNum,
-    qty: qtyNum
+    qty: qtyNum,
+    metadata: parseInventoryMetadata_(body)
+  };
+}
+
+function parseInventoryMetadata_(body) {
+  var text = String(body || '');
+  var typeMatch = text.match(/^\s*type\s*:\s*(cutting-board|charcuterie|other)\s*$/im);
+  var optionsMatch = text.match(/^\s*pre-added\s*:\s*(.*?)\s*$/im);
+  var optionsText = optionsMatch ? optionsMatch[1].toLowerCase() : '';
+  return {
+    type: typeMatch ? typeMatch[1].toLowerCase() : 'cutting-board',
+    preAdded: {
+      juiceGroove: /juice\s*groove/.test(optionsText),
+      handles: /handles?/.test(optionsText),
+      feet: /feet/.test(optionsText)
+    },
+    typeSpecified: !!typeMatch,
+    preAddedSpecified: !!optionsMatch
   };
 }
 
@@ -925,12 +943,62 @@ function removeInventoryByProductNumberOnGitHub_(cfg, productNumber) {
   }
 
   var removedFromManifest = removeInventoryFromManifestOnGitHub_(cfg, normalizedProduct);
+  removeInventoryMetadataOnGitHub_(cfg, normalizedProduct);
 
   return {
     removedCount: toDelete.length,
     removedFromManifest: removedFromManifest,
     removedFiles: toDelete.map(function (entry) { return entry.name; })
   };
+}
+
+function updateInventoryMetadataOnGitHub_(cfg, productNumber, metadata) {
+  var path = 'images/products/available/inventory-metadata.json';
+  var existing = getGitHubFileIfExists_(cfg, path);
+  var records = {};
+  if (existing && existing.content) {
+    try {
+      records = JSON.parse(Utilities.newBlob(Utilities.base64Decode(existing.content.replace(/\n/g, ''))).getDataAsString());
+      if (!records || typeof records !== 'object' || Array.isArray(records)) records = {};
+    } catch (e) {
+      records = {};
+    }
+  }
+  var key = String(productNumber).toLowerCase();
+  var previous = records[key] || {};
+  var incoming = metadata || parseInventoryMetadata_('');
+  records[key] = {
+    type: incoming.typeSpecified || !previous.type ? incoming.type : previous.type,
+    preAdded: incoming.preAddedSpecified || !previous.preAdded ? incoming.preAdded : (previous.preAdded || {})
+  };
+  var payload = {
+    message: 'Update inventory metadata for product #' + productNumber,
+    content: Utilities.base64Encode(JSON.stringify(records, null, 2) + '\n'),
+    branch: cfg.branch
+  };
+  if (existing && existing.sha) payload.sha = existing.sha;
+  putGitHubFile_(cfg, path, payload);
+}
+
+function removeInventoryMetadataOnGitHub_(cfg, productNumber) {
+  var path = 'images/products/available/inventory-metadata.json';
+  var existing = getGitHubFileIfExists_(cfg, path);
+  if (!existing || !existing.content) return;
+  var records;
+  try {
+    records = JSON.parse(Utilities.newBlob(Utilities.base64Decode(existing.content.replace(/\n/g, ''))).getDataAsString());
+  } catch (e) {
+    return;
+  }
+  var key = String(productNumber).toLowerCase();
+  if (!records || !records[key]) return;
+  delete records[key];
+  putGitHubFile_(cfg, path, {
+    message: 'Remove inventory metadata for product #' + productNumber,
+    content: Utilities.base64Encode(JSON.stringify(records, null, 2) + '\n'),
+    branch: cfg.branch,
+    sha: existing.sha
+  });
 }
 
 function recordSoldInventory_(productNumber, removedFiles, sourceSubject) {
@@ -1212,7 +1280,7 @@ function removeInventoryFromManifestOnGitHub_(cfg, normalizedProduct) {
 }
 
 function getGitHubFileIfExists_(cfg, path) {
-  var url = 'https://api.github.com/repos/' + encodeURIComponent(cfg.owner) + '/' + encodeURIComponent(cfg.repo) + '/contents/' + path + '?ref=' + encodeURIComponent(cfg.branch);
+  var url = githubContentsUrl_(cfg, path) + '?ref=' + encodeURIComponent(cfg.branch);
   var resp = UrlFetchApp.fetch(url, {
     method: 'get',
     muteHttpExceptions: true,
@@ -1231,7 +1299,7 @@ function getGitHubFileIfExists_(cfg, path) {
 }
 
 function listGitHubDirectory_(cfg, path) {
-  var url = 'https://api.github.com/repos/' + encodeURIComponent(cfg.owner) + '/' + encodeURIComponent(cfg.repo) + '/contents/' + path + '?ref=' + encodeURIComponent(cfg.branch);
+  var url = githubContentsUrl_(cfg, path) + '?ref=' + encodeURIComponent(cfg.branch);
   var resp = UrlFetchApp.fetch(url, {
     method: 'get',
     muteHttpExceptions: true,
@@ -1252,7 +1320,7 @@ function listGitHubDirectory_(cfg, path) {
 }
 
 function putGitHubFile_(cfg, path, payload) {
-  var url = 'https://api.github.com/repos/' + encodeURIComponent(cfg.owner) + '/' + encodeURIComponent(cfg.repo) + '/contents/' + path;
+  var url = githubContentsUrl_(cfg, path);
   var resp = UrlFetchApp.fetch(url, {
     method: 'put',
     muteHttpExceptions: true,
@@ -1270,7 +1338,7 @@ function putGitHubFile_(cfg, path, payload) {
 }
 
 function deleteGitHubFile_(cfg, path, sha, message) {
-  var url = 'https://api.github.com/repos/' + encodeURIComponent(cfg.owner) + '/' + encodeURIComponent(cfg.repo) + '/contents/' + path;
+  var url = githubContentsUrl_(cfg, path);
   var payload = {
     message: message || ('Delete ' + path),
     sha: sha,
@@ -1292,6 +1360,13 @@ function deleteGitHubFile_(cfg, path, sha, message) {
   if (code < 200 || code >= 300) {
     throw new Error('GitHub delete failed (' + code + '): ' + resp.getContentText());
   }
+}
+
+function githubContentsUrl_(cfg, path) {
+  var encodedPath = String(path || '').split('/').map(function (segment) {
+    return encodeURIComponent(segment);
+  }).join('/');
+  return 'https://api.github.com/repos/' + encodeURIComponent(cfg.owner) + '/' + encodeURIComponent(cfg.repo) + '/contents/' + encodedPath;
 }
 
 function testProcessInventoryInbox() {

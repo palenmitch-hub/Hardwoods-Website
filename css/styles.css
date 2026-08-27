@@ -2820,6 +2820,15 @@ textarea:focus-visible {
   border-color: rgba(255, 255, 255, 0.3);
 }
 
+.board-opt-group--included {
+  color: var(--color-text-subtle);
+  opacity: 0.55;
+}
+
+.board-opt-group--included input:disabled + label {
+  cursor: not-allowed;
+}
+
 /* Engraving section */
 .board-engraving-section {
   border-top: 1px solid var(--color-border);
