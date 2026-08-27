@@ -39,7 +39,7 @@
     "type": "cutting-board",
     "description": "A dramatic walnut and padauk end-grain board with sweeping red accents that create a cosmic, flowing pattern. The richly figured surface gives this functional piece the presence of a display-worthy centerpiece.",
     "preAdded": {
-      "juiceGroove": true,
+      "juiceGroove": false,
       "handles": false,
       "feet": false
     }
