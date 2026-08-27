@@ -2275,8 +2275,9 @@ body:not(.catalog-page) .catalog-tabs__tab[aria-selected="true"] {
 
   .catalog-page .catalog-tabs__list {
     flex-direction: row;
+    flex-wrap: wrap;
     gap: 0;
-    overflow-x: auto;
+    overflow-x: visible;
     border-bottom: 1px solid var(--color-border);
   }
 
@@ -2288,6 +2289,10 @@ body:not(.catalog-page) .catalog-tabs__tab[aria-selected="true"] {
     border-left: none;
     border-bottom: 3px solid transparent;
     white-space: nowrap;
+  }
+
+  .catalog-page .catalog-tabs__tab:last-child {
+    flex-basis: 100%;
   }
 
   .catalog-page .catalog-tabs__tab[aria-selected="true"] {
