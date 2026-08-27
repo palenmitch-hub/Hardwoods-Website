@@ -472,6 +472,7 @@
         if (item.options.accentWood) parts.push('Accent: ' + item.options.accentWood);
         if (item.options.handles) parts.push('Handles: Yes');
         if (item.options.feet) parts.push('Feet: ' + item.options.feet);
+        if (item.options.stand) parts.push('Matching Stand: Yes');
         if (item.options.epoxyColor) parts.push('Epoxy Color: ' + item.options.epoxyColor);
         if (item.options.size) parts.push('Size: ' + item.options.size);
         if (item.options.charcuterieHandles) parts.push('Handles: Yes');
@@ -1575,6 +1576,7 @@
     var BASIC_FEET_PRICE = 500;
     var BRASS_FEET_PRICE = 2000;
     var ENGRAVING_PRICE_OPT = 2000;
+    var STAND_PRICE = 2500;
     var preAdded = metadata && metadata.preAdded ? metadata.preAdded : {};
 
     var FEET_INFO = 'Basic feet are just small black ruberized feet and the Brass Feet are actual metal (brass) feet with a rubber O ring inlayed that adds another level of beauty and function.';
@@ -1678,6 +1680,21 @@
           '</div>' +
         '</div>' +
 
+        // Matching Stand
+        '<div class="board-opt-group" data-instock-option="stand">' +
+          '<span class="board-opt-group__label">Add Matching Stand</span>' +
+          '<div class="board-opt-radios">' +
+            '<div class="board-opt-radio">' +
+              '<input type="radio" id="instock-stand-no" name="instockStand" value="no" checked>' +
+              '<label for="instock-stand-no">No</label>' +
+            '</div>' +
+            '<div class="board-opt-radio">' +
+              '<input type="radio" id="instock-stand-yes" name="instockStand" value="yes">' +
+              '<label for="instock-stand-yes">Yes<span class="opt-price">+$25</span></label>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
         '<div class="board-options-modal__actions">' +
           '<button type="button" class="btn btn--outline" id="instock-opt-cancel">Cancel</button>' +
           '<button type="button" class="btn btn--accent" id="instock-opt-add">Add to Cart</button>' +
@@ -1713,6 +1730,7 @@
       modal.querySelector('[data-instock-option="engraving"]').style.display = 'none';
     } else if (productType === 'other') {
       modal.querySelector('[data-instock-option="feet"]').style.display = 'none';
+      modal.querySelector('[data-instock-option="stand"]').style.display = 'none';
     }
 
     // Engraving toggle
@@ -1788,6 +1806,8 @@
       if (juiceGroove && juiceGroove.value === 'yes' && !preAdded.juiceGroove) total += 1000;
       var handles = modal.querySelector('input[name="instockHandles"]:checked');
       if (handles && handles.value === 'yes' && !preAdded.handles) total += 1000;
+      var stand = modal.querySelector('input[name="instockStand"]:checked');
+      if (stand && stand.value === 'yes') total += STAND_PRICE;
       return total;
     }
 
@@ -1816,10 +1836,12 @@
       var engVal = modal.querySelector('input[name="instockEng"]:checked').value;
       var juiceGrooveInput = modal.querySelector('input[name="instockJuiceGroove"]:checked');
       var handlesInput = modal.querySelector('input[name="instockHandles"]:checked');
+      var standInput = modal.querySelector('input[name="instockStand"]:checked');
       var options = {
         feet: preAdded.feet ? 'Included' : (feetVal === 'none' ? null : (feetVal === 'basic' ? 'Basic' : 'Brass')),
         juiceGroove: !!juiceGrooveInput && juiceGrooveInput.value === 'yes',
         handles: !!handlesInput && handlesInput.value === 'yes',
+        stand: !!standInput && standInput.value === 'yes',
         engravingLines: null
       };
 
@@ -3105,6 +3127,7 @@
     var ACCENT_WOOD_PRICE = 2000;
     var SET_PRICE = 5000;
     var EXOTIC_WOOD_PRICE = 5000;
+    var STAND_PRICE = 2500;
 
     var HANDLES_INFO = 'These are cutout from the bottom of the board to make it easier to pick up, these are NOT physical handles that are attached or added on.';
     var FEET_INFO = 'Basic feet are just small black ruberized feet and the Brass Feet are actual metal (brass) feet with a rubber O ring inlayed that adds another level of beauty and function.';
@@ -3346,6 +3369,21 @@
         '</div>' +
 
         makeSetHtml +
+
+        // Matching Stand
+        '<div class="board-opt-group">' +
+          '<span class="board-opt-group__label">Add Matching Stand</span>' +
+          '<div class="board-opt-radios">' +
+            '<div class="board-opt-radio">' +
+              '<input type="radio" id="opt-stand-no" name="stand" value="no" checked>' +
+              '<label for="opt-stand-no">No</label>' +
+            '</div>' +
+            '<div class="board-opt-radio">' +
+              '<input type="radio" id="opt-stand-yes" name="stand" value="yes">' +
+              '<label for="opt-stand-yes">Yes<span class="opt-price">+$25</span></label>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
 
         '<div class="board-options-modal__actions">' +
           '<button type="button" class="btn btn--outline" id="opt-cancel">Cancel</button>' +
@@ -3670,6 +3708,8 @@
       if (juiceGroove && juiceGroove.value === 'yes') total += 1000;
       var makeSet = modal.querySelector('input[name="makeSet"]:checked');
       if (makeSet && makeSet.value === 'yes') total += SET_PRICE;
+      var stand = modal.querySelector('input[name="stand"]:checked');
+      if (stand && stand.value === 'yes') total += STAND_PRICE;
       return total;
     }
 
@@ -3801,6 +3841,8 @@
       options.handles = handlesVal === 'yes';
       options.feet = feetVal === 'none' ? null : (feetVal === 'basic' ? 'Basic' : 'Brass');
       options.juiceGroove = juiceGrooveVal === 'yes';
+      var standVal = modal.querySelector('input[name="stand"]:checked');
+      options.stand = !!standVal && standVal.value === 'yes';
       options.engravingLines = null;
 
       // Make it a Set
@@ -3883,6 +3925,7 @@
     var BRASS_FEET_PRICE = 2000;
     var ENGRAVING_PRICE_OPT = 2000;
     var JUICE_GROOVE_PRICE = 1000;
+    var STAND_PRICE = 2500;
 
     var HANDLES_INFO = 'These are cutout from the bottom of the board to make it easier to pick up, these are NOT physical handles that are attached or added on.';
     var FEET_INFO = 'Basic feet are just small black ruberized feet and the Brass Feet are actual metal (brass) feet with a rubber O ring inlayed that adds another level of beauty and function.';
@@ -4063,6 +4106,21 @@
           '</div>' +
         '</div>' +
 
+        // Matching Stand
+        '<div class="board-opt-group">' +
+          '<span class="board-opt-group__label">Add Matching Stand</span>' +
+          '<div class="board-opt-radios">' +
+            '<div class="board-opt-radio">' +
+              '<input type="radio" id="pat-stand-no" name="patStand" value="no" checked>' +
+              '<label for="pat-stand-no">No</label>' +
+            '</div>' +
+            '<div class="board-opt-radio">' +
+              '<input type="radio" id="pat-stand-yes" name="patStand" value="yes">' +
+              '<label for="pat-stand-yes">Yes<span class="opt-price">+$25</span></label>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
         '<div class="board-options-modal__actions">' +
           '<button type="button" class="btn btn--outline" id="pat-opt-cancel">Cancel</button>' +
           '<button type="button" class="btn btn--accent" id="pat-opt-add">Add to Cart</button>' +
@@ -4153,6 +4211,8 @@
       }
       var eng = modal.querySelector('input[name="patEngraving"]:checked');
       if (eng && eng.value === 'yes') total += ENGRAVING_PRICE_OPT;
+      var stand = modal.querySelector('input[name="patStand"]:checked');
+      if (stand && stand.value === 'yes') total += STAND_PRICE;
       return total;
     }
 
@@ -4193,6 +4253,9 @@
       options.juiceGroove = juiceGrooveVal === 'yes';
       options.handles = handlesVal === 'yes';
       options.feet = feetVal === 'none' ? null : (feetVal === 'basic' ? 'Basic' : 'Brass');
+      options.juiceGroove = juiceGrooveVal === 'yes';
+      var standVal = modal.querySelector('input[name="patStand"]:checked');
+      options.stand = !!standVal && standVal.value === 'yes';
       options.engravingLines = null;
 
       if (engVal === 'yes') {
