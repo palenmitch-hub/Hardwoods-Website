@@ -769,17 +769,16 @@ function parseInventoryMetadata_(body) {
 function updateInventoryOnGitHub_(cfg, updateInfo, imageBlobs) {
   var dirPath = 'images/products/available';
   var normalizedProduct = String(updateInfo.productNum || '').toLowerCase();
-  var imagePattern = /^.+-\d+(?:\.\d{1,2})?-\d+-([A-Za-z0-9]+)(?:-(\d+))?\.(?:jpe?g|png|webp)$/i;
   var entries = listGitHubDirectory_(cfg, dirPath);
   var existingFiles = [];
 
   for (var i = 0; i < entries.length; i++) {
     var entry = entries[i];
     if (!entry || entry.type !== 'file') continue;
-    var m = String(entry.name || '').match(imagePattern);
-    if (!m) continue;
-    if (String(m[1]).toLowerCase() === normalizedProduct) {
-      existingFiles.push({ entry: entry, index: m[2] ? parseInt(m[2], 10) : 1 });
+    var parsedFile = parseInventoryImageFileName_(entry.name);
+    if (!parsedFile) continue;
+    if (parsedFile.productNum.toLowerCase() === normalizedProduct) {
+      existingFiles.push({ entry: entry, index: parsedFile.imageNum });
     }
   }
   existingFiles.sort(function (a, b) { return a.index - b.index; });
@@ -825,6 +824,15 @@ function updateInventoryOnGitHub_(cfg, updateInfo, imageBlobs) {
     fileNames: newFileNames,
     removedFiles: existingFiles.map(function (f) { return f.entry.name; })
   };
+}
+
+function parseInventoryImageFileName_(fileName) {
+  var name = String(fileName || '');
+  var multi = name.match(/^(.+)-(\d+(?:\.\d{1,2})?)-(\d+)-([A-Za-z0-9]+)-(\d+)\.(jpe?g|png|webp)$/i);
+  if (multi) return { productNum: multi[4], imageNum: parseInt(multi[5], 10) };
+  var single = name.match(/^(.+)-(\d+(?:\.\d{1,2})?)-(\d+)-([A-Za-z0-9]+)\.(jpe?g|png|webp)$/i);
+  if (single) return { productNum: single[4], imageNum: 1 };
+  return null;
 }
 
 function copyGitHubFile_(cfg, oldPath, newPath, message) {
@@ -1054,15 +1062,14 @@ function removeInventoryByProductNumberOnGitHub_(cfg, productNumber) {
   var dirPath = 'images/products/available';
   var entries = listGitHubDirectory_(cfg, dirPath);
   var normalizedProduct = String(productNumber || '').toLowerCase();
-  var imagePattern = /^.+-\d+(?:\.\d{1,2})?-\d+-([A-Za-z0-9]+)(?:-(\d+))?\.(?:jpe?g|png|webp)$/i;
   var toDelete = [];
 
   for (var i = 0; i < entries.length; i++) {
     var entry = entries[i];
     if (!entry || entry.type !== 'file') continue;
-    var m = String(entry.name || '').match(imagePattern);
-    if (!m) continue;
-    if (String(m[1]).toLowerCase() === normalizedProduct) {
+    var parsedFile = parseInventoryImageFileName_(entry.name);
+    if (!parsedFile) continue;
+    if (parsedFile.productNum.toLowerCase() === normalizedProduct) {
       toDelete.push(entry);
     }
   }
@@ -1380,13 +1387,12 @@ function removeInventoryFromManifestOnGitHub_(cfg, normalizedProduct) {
     list = [];
   }
 
-  var re = /^.+-\d+(?:\.\d{1,2})?-\d+-([A-Za-z0-9]+)(?:-(\d+))?\.(?:jpe?g|png|webp)$/i;
   var kept = [];
   var removed = 0;
   for (var i = 0; i < list.length; i++) {
     var item = String(list[i] || '');
-    var m = item.match(re);
-    var itemProduct = m && m[1] ? String(m[1]).toLowerCase() : '';
+    var parsedFile = parseInventoryImageFileName_(item);
+    var itemProduct = parsedFile ? parsedFile.productNum.toLowerCase() : '';
     if (itemProduct === normalizedProduct) {
       removed += 1;
       continue;
