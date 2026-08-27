@@ -2,6 +2,17 @@
 
 This adds a "send an email and update Available" workflow using Google Apps Script.
 
+## Inventory Manager
+
+The recommended way to manage Available Now products is the protected web manager. After deploying the script, run `sendInventoryAdminLink` once from the Apps Script editor. The script emails the owner a private manager link. Use it to add, edit, replace photos, change product type, set pre-added options, or remove products. Do not share the link because it contains the manager key.
+
+The manager supports these product types:
+- `cutting-board`: Juice Groove, Handles, Feet, and Custom Engraving
+- `charcuterie`: Feet only
+- `other`: Custom Engraving only
+
+When editing without selecting new photos, existing photos are retained. Selecting photos replaces the current photos for that product.
+
 ## 1) Create/Use a Dedicated Inbox
 
 Recommended inbox:

@@ -57,6 +57,14 @@ function handleProcessInventoryInbox(data) {
 function doGet(e) {
   var action = e.parameter.action;
 
+  if (action === 'inventoryAdmin') {
+    var adminKey = e.parameter.key || '';
+    if (!adminKey || adminKey !== getInventoryAdminKey_()) {
+      return HtmlService.createHtmlOutput(buildResultPage('Access Denied', 'Invalid inventory manager key.', 'warning'));
+    }
+    return HtmlService.createHtmlOutput(buildInventoryAdminPage()).setTitle('Inventory Manager');
+  }
+
   // View confirmed orders dashboard
   if (action === 'viewOrders') {
     var key = e.parameter.key;
@@ -332,6 +340,113 @@ function setupInventoryEmailLabels() {
   ensureGmailLabel(INVENTORY_LABEL_NEW);
   ensureGmailLabel(INVENTORY_LABEL_PROCESSED);
   ensureGmailLabel(INVENTORY_LABEL_ERROR);
+}
+
+function getInventoryAdminKey_() {
+  var props = PropertiesService.getScriptProperties();
+  var key = props.getProperty('INVENTORY_ADMIN_KEY');
+  if (!key) {
+    key = Utilities.getUuid();
+    props.setProperty('INVENTORY_ADMIN_KEY', key);
+  }
+  return key;
+}
+
+function sendInventoryAdminLink() {
+  var url = ScriptApp.getService().getUrl() + '?action=inventoryAdmin&key=' + encodeURIComponent(getInventoryAdminKey_());
+  MailApp.sendEmail({
+    to: OWNER_EMAIL,
+    subject: 'Inventory Manager Link',
+    body: 'Open your private Inventory Manager:\n\n' + url
+  });
+  Logger.log(url);
+}
+
+function requireInventoryAdmin_(key) {
+  if (!key || key !== getInventoryAdminKey_()) throw new Error('Unauthorized inventory manager request.');
+  var cfg = loadGitHubConfig_();
+  if (!cfg.enabled) throw new Error('GitHub is not configured. Set GITHUB_TOKEN, GITHUB_OWNER, and GITHUB_REPO first.');
+  return cfg;
+}
+
+function getInventoryAdminData(key) {
+  var cfg = requireInventoryAdmin_(key);
+  var entries = listGitHubDirectory_(cfg, 'images/products/available');
+  var metadata = getInventoryMetadataFromGitHub_(cfg);
+  var products = {};
+  var imagePattern = /^(.+)-(\d+(?:\.\d{1,2})?)-(\d+)-([A-Za-z0-9]+)(?:-(\d+))?\.(jpe?g|png|webp)$/i;
+
+  for (var i = 0; i < entries.length; i++) {
+    var entry = entries[i];
+    var match = entry && entry.type === 'file' ? String(entry.name || '').match(imagePattern) : null;
+    if (!match) continue;
+    var number = match[4];
+    if (!products[number]) {
+      var productMeta = metadata[String(number).toLowerCase()] || {};
+      products[number] = {
+        productNum: number,
+        name: match[1],
+        price: parseFloat(match[2]),
+        qty: parseInt(match[3], 10),
+        type: productMeta.type || 'cutting-board',
+        preAdded: productMeta.preAdded || {},
+        images: []
+      };
+    }
+    products[number].images.push(entry.name);
+  }
+  return Object.keys(products).map(function (number) { return products[number]; }).sort(function (a, b) {
+    return String(a.productNum).localeCompare(String(b.productNum), undefined, { numeric: true });
+  });
+}
+
+function saveInventoryAdminProduct(data, key) {
+  var cfg = requireInventoryAdmin_(key);
+  data = data || {};
+  var productNum = String(data.productNum || '').trim();
+  if (!productNum) productNum = getNextInventoryProductNumber_(cfg);
+  if (!/^[A-Za-z0-9]+$/.test(productNum)) throw new Error('Product number must contain only letters and numbers.');
+  var name = String(data.name || '').trim();
+  var price = Number(data.price);
+  var qty = Number(data.qty);
+  var type = String(data.type || 'cutting-board').toLowerCase();
+  if (!name || !isFinite(price) || price <= 0 || !isFinite(qty) || qty <= 0 || Math.floor(qty) !== qty) throw new Error('Name, price, and quantity are required.');
+  if (['cutting-board', 'charcuterie', 'other'].indexOf(type) === -1) throw new Error('Invalid product type.');
+
+  var images = Array.isArray(data.images) ? data.images : [];
+  var blobs = [];
+  for (var i = 0; i < images.length; i++) {
+    var image = images[i] || {};
+    if (!image.base64) continue;
+    blobs.push(Utilities.newBlob(Utilities.base64Decode(image.base64), image.mimeType || 'image/jpeg', image.name || ('product-' + (i + 1) + '.jpg')));
+  }
+
+  updateInventoryOnGitHub_(cfg, { productNum: productNum, name: name, price: price, qty: qty }, blobs);
+  updateInventoryMetadataOnGitHub_(cfg, productNum, {
+    type: type,
+    preAdded: { juiceGroove: !!data.juiceGroove, handles: !!data.handles, feet: !!data.feet },
+    typeSpecified: true,
+    preAddedSpecified: true
+  });
+  return { success: true, productNum: productNum };
+}
+
+function removeInventoryAdminProduct(productNum, key) {
+  var cfg = requireInventoryAdmin_(key);
+  var result = removeInventoryByProductNumberOnGitHub_(cfg, String(productNum || '').trim());
+  if (!result.removedCount) throw new Error('No inventory images found for Product #' + productNum + '.');
+  return { success: true };
+}
+
+function getInventoryMetadataFromGitHub_(cfg) {
+  var existing = getGitHubFileIfExists_(cfg, 'images/products/available/inventory-metadata.json');
+  if (!existing || !existing.content) return {};
+  try {
+    var records = JSON.parse(Utilities.newBlob(Utilities.base64Decode(existing.content.replace(/\n/g, ''))).getDataAsString());
+    return records && typeof records === 'object' ? records : {};
+  } catch (e) {
+    return {};
+  }
 }
 
 function processInventoryInbox() {
@@ -1467,6 +1582,15 @@ function testSendEmail() {
     subject: 'Test - Mitch\'s Hardwoods Order System',
     body: 'If you received this email, the order system is working!'
   });
+}
+
+function buildInventoryAdminPage() {
+  var key = JSON.stringify(getInventoryAdminKey_());
+  return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<title>Inventory Manager</title><style>' +
+    '*{box-sizing:border-box}body{font:15px Arial,sans-serif;margin:0;background:#f4f1eb;color:#29251f}main{max-width:1100px;margin:0 auto;padding:28px 18px}h1{margin:0 0 6px;color:#5b3d25}p{color:#746b60}.layout{display:grid;grid-template-columns:minmax(280px,1fr) minmax(300px,1fr);gap:22px;align-items:start}.panel{background:#fff;border:1px solid #d9d0c4;border-radius:8px;padding:20px;box-shadow:0 5px 20px #47351b12}label{display:block;font-weight:700;margin:12px 0 5px}input,select{width:100%;padding:10px;border:1px solid #cfc4b6;border-radius:5px;font:inherit}input[type=checkbox]{width:auto;margin-right:8px}.checks{display:flex;gap:16px;flex-wrap:wrap;margin:10px 0}.checks label{font-weight:400;margin:0}.actions{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}button{border:0;border-radius:5px;padding:10px 15px;font-weight:700;cursor:pointer;background:#5b3d25;color:#fff}button.secondary{background:#e8e0d6;color:#382b20}button.danger{background:#a33b2e}.status{min-height:22px;margin-top:12px;color:#5b3d25}.product{display:grid;grid-template-columns:76px 1fr auto;gap:12px;align-items:center;border-top:1px solid #e4ddd4;padding:12px 0}.product:first-child{border-top:0}.product img{width:76px;height:60px;object-fit:cover;border-radius:4px;background:#eee}.product h3{font-size:16px;margin:0 0 4px}.product small{color:#776e64}.product .actions{margin:0}.product .actions button{padding:7px 9px;font-size:12px}@media(max-width:720px){.layout{grid-template-columns:1fr}.product{grid-template-columns:58px 1fr}.product img{width:58px;height:52px}.product .actions{grid-column:2}}' +
+    '</style></head><body><main><h1>Inventory Manager</h1><p>Add, update, replace photos, or remove Available Now products.</p><div class="layout"><section class="panel"><h2 id="form-title">Add product</h2><form id="product-form"><input type="hidden" id="original-number"><label for="product-number">Product number <small>(leave blank to assign next)</small></label><input id="product-number" pattern="[A-Za-z0-9]+"><label for="product-name">Name</label><input id="product-name" required><label for="product-price">Price</label><input id="product-price" type="number" min="0.01" step="0.01" required><label for="product-qty">Quantity</label><input id="product-qty" type="number" min="1" step="1" value="1" required><label for="product-type">Type</label><select id="product-type"><option value="cutting-board">Cutting board</option><option value="charcuterie">Charcuterie</option><option value="other">Other</option></select><label>Already included on this product</label><div class="checks"><label><input type="checkbox" id="opt-groove">Juice Groove</label><label><input type="checkbox" id="opt-handles">Handles</label><label><input type="checkbox" id="opt-feet">Feet</label></div><label for="product-images">Photos <small>(select files to replace existing photos)</small></label><input id="product-images" type="file" accept="image/jpeg,image/png,image/webp" multiple><div class="actions"><button type="submit">Save product</button><button type="button" class="secondary" id="clear">Clear</button></div><div class="status" id="status" aria-live="polite"></div></form></section><section class="panel"><h2>Available products</h2><div id="products">Loading...</div></section></div></main><script>' +
+    'var KEY=' + key + ',products=[];var $=function(id){return document.getElementById(id)};function status(text){$("status").textContent=text}function call(method,args,done){var runner=google.script.run.withSuccessHandler(done).withFailureHandler(function(e){status(e.message||String(e))});runner[method].apply(runner,args||[])}function load(){call("getInventoryAdminData",[KEY],function(data){products=data||[];render()})}function render(){var out="";products.forEach(function(p){out+="<article class=product><div></div><div><h3>"+esc(p.name)+"</h3><small>#"+esc(p.productNum)+" - $"+Number(p.price).toFixed(2)+" - "+p.qty+" available - "+esc(p.type)+"</small></div><div class=actions><button onclick=edit("+JSON.stringify(p.productNum)+")>Edit</button><button class=danger onclick=removeProduct("+JSON.stringify(p.productNum)+")>Remove</button></div></article>"});$("products").innerHTML=out||"<p>No products found.</p>"}function esc(v){return String(v||"").replace(/[&<>]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;"}[c]})}function edit(number){var p=products.filter(function(x){return x.productNum===number})[0];if(!p)return;$("form-title").textContent="Edit product #"+number;$("original-number").value=number;$("product-number").value=number;$("product-name").value=p.name;$("product-price").value=p.price;$("product-qty").value=p.qty;$("product-type").value=p.type||"cutting-board";$("opt-groove").checked=!!p.preAdded.juiceGroove;$("opt-handles").checked=!!p.preAdded.handles;$("opt-feet").checked=!!p.preAdded.feet;window.scrollTo(0,0)}function removeProduct(number){if(!confirm("Remove product #"+number+" from Available Now?"))return;status("Removing...");call("removeInventoryAdminProduct",[number,KEY],function(){status("Removed product #"+number);load()})}function clearForm(){$("product-form").reset();$("original-number").value="";$("form-title").textContent="Add product";$("product-images").value=""}function readImages(files,done){var result=[],left=files.length;if(!left)return done(result);Array.prototype.forEach.call(files,function(file){var reader=new FileReader();reader.onload=function(){result.push({name:file.name,mimeType:file.type,base64:String(reader.result).split(",")[1]});if(!--left)done(result)};reader.readAsDataURL(file)})}$("clear").onclick=clearForm;$("product-form").onsubmit=function(e){e.preventDefault();var data={productNum:$("product-number").value.trim(),name:$("product-name").value.trim(),price:$("product-price").value,qty:$("product-qty").value,type:$("product-type").value,juiceGroove:$("opt-groove").checked,handles:$("opt-handles").checked,feet:$("opt-feet").checked};status("Saving...");readImages($("product-images").files,function(images){data.images=images;call("saveInventoryAdminProduct",[data,KEY],function(result){status("Saved product #"+result.productNum);clearForm();load()})})};load();</script></body></html>';
 }
 
 // ---- Result Page Template ----
